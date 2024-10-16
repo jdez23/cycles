@@ -26,16 +26,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['cycles-app.herokuapp.com']
+ALLOWED_HOSTS = ['cycles-app-11ce5033b5eb.herokuapp.com']
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:3000",
-    "http://cycles-app.herokuapp.com",
-    "https://cycles-app.herokuapp.com",
+    "http://cycles-app-11ce5033b5eb.herokuapp.com",
+    "https://cycles-app-11ce5033b5eb.herokuapp.com",
     "https://cyclesstudios.com",
 ]
 
