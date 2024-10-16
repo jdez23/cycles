@@ -28,14 +28,14 @@ SECRET_KEY = os.environ['SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = ['cycles.herokuapp.com']
+ALLOWED_HOSTS = ['cycles-app.herokuapp.com']
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:3000",
-    "http://cycles.herokuapp.com",
-    "https://cycles.herokuapp.com",
+    "http://cycles-app.herokuapp.com",
+    "https://cycles-app.herokuapp.com",
     "https://cyclesstudios.com",
 ]
 
@@ -109,16 +109,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'jdez23',
-        'PASSWORD': 'Clifford1997!!',
-        'HOST': 'cycles.cbcqgaym46q2.us-east-2.rds.amazonaws.com',
-        'PORT': '5432'
-    }
-}
+DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'])}
 
 
 # Password validation
@@ -164,9 +155,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FIREBASE_CONFIG = os.path.join(BASE_DIR, 'firebase-config.json')
 
-# FIREBASE_CONFIG = os.environ['FIREBASE_CONFIG']
-
-
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
 AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
@@ -178,4 +166,4 @@ AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
 AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
 DEFAULT_FILE_STORAGE = os.environ['DEFAULT_FILE_STORAGE']
 
-# django_heroku.settings(locals())
+django_heroku.settings(locals())

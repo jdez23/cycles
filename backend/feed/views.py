@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # GET ALL PLAYLISTS (DISCOVER FEED)
 class PlaylistViewSet(viewsets.ModelViewSet):
     serializer_class = UserPlaylistSerializer
+    pagination_class = None
 
     def get_queryset(self):
         try:
