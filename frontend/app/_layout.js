@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { View, StatusBar, SafeAreaView, StyleSheet } from "react-native";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, Slot, useRouter } from "expo-router";
 import { RootSiblingParent } from "react-native-root-siblings";
 import { Provider as PlaylistProvider } from "../context/playlist-context";
 import { Provider as NotifProvider } from "../context/notif-context";
@@ -12,12 +12,10 @@ import {
 
 const MainLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
-  // const [hasNavigated, setHasNavigated] = useState(false);
   const authContext = useContext(AuthContext);
   const router = useRouter();
   const token = authContext?.state?.token;
   const username = authContext?.state?.username;
-  const segments = useSegments();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -27,15 +25,14 @@ const MainLayout = () => {
     initializeAuth();
   }, [authContext]);
 
-  // REPLCE WITH THE STACK!!
   useEffect(() => {
     if (!isLoading) {
       if (!token) {
-        router.replace("/(auth)/sign-in");
+        router.replace("/sign-in");
       } else if (token && !username) {
         router.replace("/onboard/on-board");
       } else {
-        router.replace("(tabs)/home");
+        router.replace("/home");
       }
     }
   }, [token, isLoading, username]);
@@ -68,16 +65,16 @@ const MainLayout = () => {
 
   return (
     <RootSiblingParent>
-      <Slot>
-        <SafeAreaView style={styles.root}>
-          <StatusBar barStyle="light-content" />
-        </SafeAreaView>
-      </Slot>
+      <StatusBar barStyle="light-content" />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="screens" options={{ headerShown: false }} />
+      </Stack>
     </RootSiblingParent>
   );
 };
 
-const RootLayout = () => {
+export default RootLayout = () => {
   return (
     <AuthProvider>
       <NotifProvider>
@@ -88,8 +85,6 @@ const RootLayout = () => {
     </AuthProvider>
   );
 };
-
-export default RootLayout;
 
 const styles = StyleSheet.create({
   root: {

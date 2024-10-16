@@ -13,12 +13,13 @@ import {
   Dimensions,
   TouchableOpacity,
 } from "react-native";
-import Spotify_Icon_RGB_Green from "../../../assets/logos/Spotify_Icon_RGB_Green.png";
+import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.png";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Feather from "react-native-vector-icons/Feather";
 import { router, useLocalSearchParams } from "expo-router";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
-import { Context as AuthContext } from "../../../context/auth-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
+import { Context as AuthContext } from "../../context/auth-context";
 import Toast from "react-native-root-toast";
 import ActionSheet from "react-native-actionsheet";
 import { Audio } from "expo-av";
@@ -28,9 +29,8 @@ const window = Dimensions.get("window").width;
 
 const Playlist = () => {
   const params = useLocalSearchParams();
-  const { playlist_id, fromTab } = params;
+  const { playlist_id } = params;
   let actionSheet = useRef();
-  const [isLiked, setIsLiked] = useState();
   const optionArray = ["Delete", "Cancel"];
   const [toast, setToast] = useState(null);
   const playlistContext = useContext(PlaylistContext);
@@ -40,6 +40,8 @@ const Playlist = () => {
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [me, setMe] = useState(null);
+  // const [isLiked, setIsLiked] = useState(false);
+  const isLiked = playlistContext?.state?.isLiked?.data;
   const playlist = playlistContext?.state?.playlist;
   const tracks = playlistContext?.state?.tracks;
   const nextPage = playlistContext?.state?.pagination?.next;
@@ -74,22 +76,27 @@ const Playlist = () => {
   }, [playlistContext?.state?.errorMessage]);
 
   useEffect(() => {
+    playlistContext?.checkIfLiked(playlist_id);
+  }, []);
+
+  useEffect(() => {
     const fetchInitialData = async () => {
       setLoadingState((prevState) => ({
         ...prevState,
         isInitialLoading: true,
       }));
 
-      const delay = new Promise((resolve) => setTimeout(resolve, 1300));
+      // const delay = new Promise((resolve) => setTimeout(resolve, 1300));
 
       try {
         const me = await authContext?.getCurrentUser();
         setMe(me);
-        playlistContext?.fetchPlaylist(
+
+        await playlistContext?.fetchPlaylist(
           playlist_id ? playlist_id : playlist_id.toString()
         );
 
-        await Promise.all([delay]);
+        // await Promise.all([delay]);
       } finally {
         setLoadingState((prevState) => ({
           ...prevState,
@@ -98,15 +105,10 @@ const Playlist = () => {
       }
     };
 
-    fetchInitialData();
-  }, []);
-
-  // Check if current user liked this image
-  useEffect(() => {
-    playlistContext
-      ?.checkIfLiked(playlist?.id)
-      .then((item) => setIsLiked(item.data));
-  }, []);
+    if (playlist_id) {
+      fetchInitialData();
+    }
+  }, [playlist_id]);
 
   //Listen for Callback URL
   useEffect(() => {
@@ -123,14 +125,12 @@ const Playlist = () => {
 
   // Unlike playlist
   const onUnlike = () => {
-    playlistContext
-      ?.unlikePlaylist(playlist.id)
-      .then((item) => setIsLiked(item));
+    playlistContext?.unlikePlaylist(playlist.id);
   };
 
   // Like playlist
   const onLike = (props) => {
-    playlistContext?.likePlaylist(props).then((item) => setIsLiked(item));
+    playlistContext?.likePlaylist(props);
   };
 
   useEffect(() => {
@@ -348,7 +348,7 @@ const Playlist = () => {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => onLike(props)}>
-                  <Feather name="heart" size={24} color={"white"} />
+                  <FontAwesome name="heart-o" size={24} color={"white"} />
                 </TouchableOpacity>
               )}
             </View>

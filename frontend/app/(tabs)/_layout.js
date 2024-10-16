@@ -1,10 +1,10 @@
 import { View, ActivityIndicator } from "react-native";
 import React, { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
-import { router, Tabs } from "expo-router";
+import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Octicons from "@expo/vector-icons/Octicons";
-import { requestUserPermission } from "../../../firebase/notifications";
+import { requestUserPermission } from "../../firebase/notifications";
 
 const TabsLayout = () => {
   SplashScreen.preventAutoHideAsync();
@@ -15,7 +15,7 @@ const TabsLayout = () => {
   }, []);
 
   return (
-    <Tabs>
+    <Tabs backBehavior="history">
       <Tabs.Screen
         name="home"
         options={{

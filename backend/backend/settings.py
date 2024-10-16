@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import django_heroku
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -149,15 +151,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8081",
-    "http://localhost:8082",
-    "http://localhost:3000",
-    "http://cycles.herokuapp.com",
-    "https://cycles.herokuapp.com",
-    "https://cyclesstudios.com",
-]
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -169,17 +162,20 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 FIREBASE_CONFIG = os.path.join(BASE_DIR, 'firebase-config.json')
 
+# FIREBASE_CONFIG = os.environ['FIREBASE_CONFIG']
 
-AWS_ACCESS_KEY_ID = 'AKIAQGYBPLXQS54FT3V5 '
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_STORAGE_BUCKET_NAME = 'cyclesapp'
-AWS_S3_SIGNATURE_NAME = 's3v4',
-AWS_S3_REGION_NAME = 'us-east-1'
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = 'public-read'
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_VERIFY = True
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
+AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
+AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
+AWS_S3_REGION_NAME = os.environ['AWS_S3_REGION_NAME']
+AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
+AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
+AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
+AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
+DEFAULT_FILE_STORAGE = os.environ['DEFAULT_FILE_STORAGE']
+
+# django_heroku.settings(locals())

@@ -13,7 +13,7 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-root-toast";
-import { Context as AuthContext } from "../../../context/auth-context";
+import { Context as AuthContext } from "../../context/auth-context";
 
 const ProfileSettings = () => {
   const authContext = useContext(AuthContext);

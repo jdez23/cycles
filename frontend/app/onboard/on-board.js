@@ -11,7 +11,7 @@ import { Context as AuthContext } from "../../context/auth-context";
 import Toast from "react-native-root-toast";
 import { router } from "expo-router";
 
-const onBoard = () => {
+const OnBoard = () => {
   const authContext = useContext(AuthContext);
   const token = authContext.state.token;
   const [user_name, setUsername] = useState("");
@@ -142,4 +142,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default onBoard;
+export default OnBoard;

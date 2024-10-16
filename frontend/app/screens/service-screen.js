@@ -12,7 +12,7 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Octicons from "react-native-vector-icons/Octicons";
 // import Toast from 'react-native-root-toast';
-import { Context as AuthContext } from "../../../context/auth-context";
+import { Context as AuthContext } from "../../context/auth-context";
 
 const ServicesScreen = () => {
   const authContext = useContext(AuthContext);

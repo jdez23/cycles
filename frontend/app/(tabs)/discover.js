@@ -18,10 +18,10 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import Entypo from "react-native-vector-icons/Entypo";
 import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-root-toast";
-import { Context as AuthContext } from "../../../context/auth-context";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
+import { Context as AuthContext } from "../../context/auth-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
+import default_avi from "../../assets/images/default_avi.jpg";
 // import envs from '../../../Config/env';
 
 // const BACKEND_URL = envs.PROD_URL;

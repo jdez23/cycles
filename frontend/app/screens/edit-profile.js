@@ -16,9 +16,9 @@ import * as ImagePicker from "expo-image-picker";
 import Icon from "react-native-vector-icons/FontAwesome";
 import axios from "axios";
 import Toast from "react-native-root-toast";
-import { Context as AuthContext } from "../../../context/auth-context";
+import { Context as AuthContext } from "../../context/auth-context";
 import { router, useLocalSearchParams, useSegments } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
+import default_avi from "../../assets/images/default_avi.jpg";
 // import envs from '../../../Config/env';
 
 // const BACKEND_URL = envs.PROD_URL;

@@ -18,13 +18,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import moment from "moment";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { Context as AuthContext } from "../../../context/auth-context";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
+import { Context as AuthContext } from "../../context/auth-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
 import { TextInput } from "react-native-gesture-handler";
 import Toast from "react-native-root-toast";
-import Spotify_Icon_RGB_Green from "../../../assets/logos/Spotify_Icon_RGB_Green.png";
+import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.png";
 import { router, useLocalSearchParams } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
+import default_avi from "../../assets/images/default_avi.jpg";
 
 const CommentsScreen = () => {
   const params = useLocalSearchParams();

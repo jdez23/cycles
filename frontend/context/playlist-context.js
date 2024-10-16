@@ -20,6 +20,7 @@ const defaultValue = {
     next: null,
     previous: null,
   },
+  isLiked: false,
   comments: [],
   spotifyPlaylists: [],
   errorMessage: "",
@@ -659,7 +660,11 @@ const checkIfLiked = (dispatch) => async (id) => {
         Authorization: token,
       },
     });
-    return isLiked;
+    // return isLiked;
+    dispatch({
+      type: "isLiked",
+      isLiked: isLiked,
+    });
   } catch (err) {
     null;
   }

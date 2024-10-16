@@ -11,9 +11,9 @@ import {
   Dimensions,
   TouchableOpacity,
 } from "react-native";
-import { Context as AuthContext } from "../../../context/auth-context";
+import { Context as AuthContext } from "../../context/auth-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
 import Toast from "react-native-root-toast";
 

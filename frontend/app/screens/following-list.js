@@ -9,35 +9,36 @@ import {
   Pressable,
   Dimensions,
 } from "react-native";
-import * as SecureStore from "expo-secure-store";
-import { Context as AuthContext } from "../../../context/auth-context";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
+import { Context as AuthContext } from "../../context/auth-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-root-toast";
 import { router, useLocalSearchParams } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
+import default_avi from "../../assets/images/default_avi.jpg";
 
 const window = Dimensions.get("window").width;
 
-const FollowersList = () => {
+const FollowingList = () => {
   const params = useLocalSearchParams();
-  const { user_id, id } = params;
+  const { id } = params;
   const [toast, setToast] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [loading, setLoading] = useState(false);
   const authContext = useContext(AuthContext);
   const playlistContext = useContext(PlaylistContext);
-  const followers = playlistContext?.state?.followers?.results;
-  const nextPage = playlistContext?.state?.followers?.next;
+  const following = playlistContext?.state?.following?.results;
+  const nextPage = playlistContext?.state?.following?.next;
 
   useEffect(() => {
-    if (authContext?.state?.errorMessage) {
+    if (playlistContext?.state?.errorMessage) {
       setToast(
-        Toast.show(playlistContext?.state?.errorMessage, {
+        Toast.show(authContext?.state?.errorMessage, {
           duration: Toast.durations.SHORT,
-          position: Toast.positions.TOP,
-          onHidden: () => dispatch({ type: "clear_error_message" }),
+          position: Toast.positions.CENTER,
+          onHidden: () =>
+            playlistContext?.dispatch({ type: "clear_error_message" }),
         })
       );
     } else if (toast) {
@@ -47,8 +48,8 @@ const FollowersList = () => {
 
   // Call to get list of followers
   useEffect(() => {
-    playlistContext?.getFollowers(user_id || id);
-  }, [authContext?.state?.token]);
+    playlistContext?.getFollowing(id);
+  }, [authContext?.state.token]);
 
   const wait = (timeout) => {
     // Defined the timeout function for testing purpose
@@ -58,7 +59,7 @@ const FollowersList = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     setLoadingData(true);
-    playlistContext?.getFollowers(id, nextPage);
+    playlistContext?.getFollowing(id);
     loadingData == true ? (
       <View
         style={{
@@ -69,7 +70,7 @@ const FollowersList = () => {
         <ActivityIndicator color={"white"} size="large" />
       </View>
     ) : null;
-    wait(2000).then(() => setIsRefreshing(false), setLoadingData(false));
+    wait(500).then(() => setIsRefreshing(false), setLoadingData(false));
   };
 
   const onBack = () => {
@@ -79,18 +80,24 @@ const FollowersList = () => {
   //Navigate to user profile
   const onUser = async (item) => {
     const currentUser = await SecureStore.getItemAsync("user_id");
-    router.push("profile", { me: currentUser, userID: item.user });
+    router.push({
+      pathname: "user-profile",
+      params: {
+        me: currentUser,
+        userID: item.following_user,
+      },
+    });
   };
 
   const loadMore = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getFollowers(to_user, nextPage);
+      await playlistContext?.getFollowing(id, nextPage);
       setLoading(false);
     }
   };
 
-  // Render followers
+  // Render following users
   _renderItem = ({ item }) => (
     <Pressable
       style={{
@@ -115,7 +122,7 @@ const FollowersList = () => {
         }}
       >
         <Image
-          style={{ height: 40, width: 40, borderRadius: 40 }}
+          style={{ height: 40, width: 40, borderRadius: 30 }}
           source={item.avi_pic ? { uri: item.avi_pic } : default_avi}
         />
         <View
@@ -128,11 +135,10 @@ const FollowersList = () => {
         >
           {item.username ? (
             <Text
-              numberOfLines={1}
               style={{
                 textAlign: "left",
                 color: "white",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: "600",
               }}
             >
@@ -141,7 +147,6 @@ const FollowersList = () => {
           ) : null}
           {item.name ? (
             <Text
-              numberOfLines={1}
               style={{
                 textAlign: "left",
                 marginTop: 1,
@@ -166,12 +171,12 @@ const FollowersList = () => {
             <Ionicons name="chevron-back" size={25} color={"white"} />
           </View>
         </Pressable>
-        <Text style={styles.textUser}>Followers</Text>
+        <Text style={styles.textUser}>Following</Text>
         <View style={{ height: 40, width: 40 }} />
       </View>
       <View style={{ flex: 1 }}>
         <FlatList
-          data={followers}
+          data={following}
           renderItem={_renderItem}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
@@ -214,4 +219,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FollowersList;
+export default FollowingList;

@@ -389,14 +389,14 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import ActionSheet from "react-native-actionsheet";
-import Header from "../../../components/header";
+import Header from "../../components/header";
 import Toast from "react-native-root-toast";
 import moment from "moment";
 import * as SecureStore from "expo-secure-store";
-import { Context as PlaylistContext } from "../../../context/playlist-context";
+import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
-import Spotify_Icon_RGB_Green from "../../../assets/logos/Spotify_Icon_RGB_Green.png";
+import default_avi from "../../assets/images/default_avi.jpg";
+import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.png";
 
 const windowWidth = Dimensions.get("window").width;
 
@@ -446,7 +446,7 @@ const FollowingFeed = () => {
   const onPlaylistDetail = async (item) => {
     const me = await SecureStore.getItemAsync("user_id");
     router.navigate({
-      pathname: "playlist-screen",
+      pathname: "/screens/playlist-screen",
       params: { playlist_id: item.id, me },
     });
   };

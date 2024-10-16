@@ -9,14 +9,14 @@ import {
   Dimensions,
   Pressable,
 } from "react-native";
-import { Context as NotifContext } from "../../../context/notif-context";
+import { Context as NotifContext } from "../../context/notif-context";
 // import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Toast from "react-native-root-toast";
 import moment from "moment";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { router } from "expo-router";
-import default_avi from "../../../assets/images/default_avi.jpg";
+import default_avi from "../../assets/images/default_avi.jpg";
 
 const window = Dimensions.get("window").width;
 
