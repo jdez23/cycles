@@ -19,10 +19,8 @@ import Toast from "react-native-root-toast";
 import { Context as AuthContext } from "../../context/auth-context";
 import { router, useLocalSearchParams, useSegments } from "expo-router";
 import default_avi from "../../assets/images/default_avi.jpg";
-// import envs from '../../../Config/env';
 
-// const BACKEND_URL = envs.PROD_URL;
-const BACKEND_URL = "http://127.0.0.1:8000/";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const window = Dimensions.get("window").width;
 
@@ -79,18 +77,19 @@ const EditProfile = () => {
     const currentUser = await getCurrentUser();
     const token = await getToken();
     const formData = new FormData();
+
     formData.append("avi_pic", {
       uri: new_avi_pic,
       type: "image/jpeg",
-      name: new_avi_pic,
+      name: new_avi_pic.split("/").pop(),
     });
     formData.append("name", new_name);
     formData.append("username", new_username);
     formData.append("bio", new_bio);
     formData.append("spotify_url", new_spotify_url ? new_spotify_url : "null");
     try {
-      const res = await axios.put(
-        `${BACKEND_URL}/users/user/${currentUser}/`,
+      const response = await axios.put(
+        `http://127.0.0.1:8000/users/user/${currentUser}/`,
         formData,
         {
           headers: {
@@ -99,11 +98,11 @@ const EditProfile = () => {
           },
         }
       );
-      if (res.status === 200) {
+      if (response.status === 200) {
         setLoading(false);
         router.back();
       }
-    } catch (e) {
+    } catch (error) {
       authContext?.dispatch({
         type: "error_1",
         payload: "Something went wrong. Please try again.",

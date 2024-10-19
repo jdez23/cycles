@@ -40,8 +40,7 @@ const Playlist = () => {
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [me, setMe] = useState(null);
-  // const [isLiked, setIsLiked] = useState(false);
-  const isLiked = playlistContext?.state?.isLiked?.data;
+  const [isLiked, setIsLiked] = useState(playlistContext?.state?.isLiked?.data);
   const playlist = playlistContext?.state?.playlist;
   const tracks = playlistContext?.state?.tracks;
   const nextPage = playlistContext?.state?.pagination?.next;
@@ -77,7 +76,7 @@ const Playlist = () => {
 
   useEffect(() => {
     playlistContext?.checkIfLiked(playlist_id);
-  }, []);
+  }, [isLiked]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -118,7 +117,7 @@ const Playlist = () => {
 
   const onComments = () => {
     router.push({
-      pathname: "../comments",
+      pathname: "./comments",
       params: props,
     });
   };
@@ -126,11 +125,13 @@ const Playlist = () => {
   // Unlike playlist
   const onUnlike = () => {
     playlistContext?.unlikePlaylist(playlist.id);
+    setIsLiked(false);
   };
 
   // Like playlist
   const onLike = (props) => {
     playlistContext?.likePlaylist(props);
+    setIsLiked(true);
   };
 
   useEffect(() => {
@@ -343,7 +344,7 @@ const Playlist = () => {
               }}
             >
               {isLiked == true ? (
-                <TouchableOpacity onPress={() => onUnlike(item.item)}>
+                <TouchableOpacity onPress={() => onUnlike()}>
                   <FontAwesome name="heart" size={24} color={"red"} />
                 </TouchableOpacity>
               ) : (
@@ -361,13 +362,13 @@ const Playlist = () => {
                 justifyContent: "center",
               }}
             >
-              <TouchableOpacity onPress={() => onComments(item?.playlist_id)}>
+              <TouchableOpacity onPress={() => onComments()}>
                 <Feather name="message-circle" size={25} color={"white"} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={() => onComments(playlist?.playlist_id)}>
+        <TouchableOpacity onPress={() => onComments()}>
           <Text
             style={{
               color: "lightgrey",

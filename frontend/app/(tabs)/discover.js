@@ -22,10 +22,8 @@ import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
 import default_avi from "../../assets/images/default_avi.jpg";
-// import envs from '../../../Config/env';
 
-// const BACKEND_URL = envs.PROD_URL;
-const BACKEND_URL = "http://127.0.0.1:8000/";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const window = Dimensions.get("window").width;
 
@@ -92,7 +90,7 @@ const DiscoverFeed = () => {
   const onPlaylistDetail = async (item) => {
     const me = await getUserID();
     router.push({
-      pathname: "playlist-screen",
+      pathname: "/screens/playlist-screen",
       params: { playlist_id: item.id, me: me, fromTab: "discover" },
     });
   };
@@ -116,7 +114,7 @@ const DiscoverFeed = () => {
     item.playlist_title
       ? onPlaylistDetail(item)
       : router.push({
-          pathname: "user-profile",
+          pathname: "/screens/user-profile",
           params: item,
         });
   };
@@ -125,7 +123,7 @@ const DiscoverFeed = () => {
   const onUserPic = async (item) => {
     const me = await getUserID();
     router.push({
-      pathname: "user-profile",
+      pathname: "/screens/user-profile",
       params: { userID: item.user, playlist_id: item.id, me: me },
     });
   };
@@ -136,7 +134,7 @@ const DiscoverFeed = () => {
       style={{
         marginTop: 6,
         marginHorizontal:
-          playlistContext?.state?.allPlaylists?.results.length > 1 ? 2 : 12,
+          playlistContext?.state?.allPlaylists?.length > 1 ? 2 : 12,
         marginBottom: 12,
         width: window / 2 - 12,
         alignItems: "center",
@@ -453,7 +451,7 @@ const DiscoverFeed = () => {
       <View
         style={
           playlistContext?.state?.allPlaylists &&
-          playlistContext?.state?.allPlaylists?.results.length > 1
+          playlistContext?.state?.allPlaylists?.length > 1
             ? {
                 flex: 1,
                 justifyContent: "center",
@@ -495,8 +493,8 @@ const DiscoverFeed = () => {
           )
         ) : (
           <FlatList
-            data={playlistContext?.state?.allPlaylists?.results}
-            key={`two-columns-${playlistContext?.state.allPlaylists?.results.length}`}
+            data={playlistContext?.state?.allPlaylists}
+            key={`two-columns-${playlistContext?.state?.allPlaylists?.length}`}
             renderItem={renderPlaylists}
             numColumns={2}
             initialNumToRender={10}

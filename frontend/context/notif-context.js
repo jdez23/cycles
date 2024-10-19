@@ -2,10 +2,8 @@
 import context from "./context";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-// import envs from '../../Config/env';
 
-// const BACKEND_URL = envs.PROD_URL;
-const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const defaultValue = {
   errorMessage: "",

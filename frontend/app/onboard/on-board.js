@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { Context as AuthContext } from "../../context/auth-context";
 import Toast from "react-native-root-toast";
-import { router } from "expo-router";
 
 const OnBoard = () => {
   const authContext = useContext(AuthContext);

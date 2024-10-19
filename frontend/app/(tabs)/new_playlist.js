@@ -3,29 +3,22 @@ import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   Image,
-  Pressable,
   Linking,
   SafeAreaView,
-  FlatList,
-  ImageBackground,
-  Dimensions,
   TouchableOpacity,
   TouchableHighlight,
   ActivityIndicator,
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import Icon from "react-native-vector-icons/FontAwesome";
-import Feather from "react-native-vector-icons/Feather";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
 import Toast from "react-native-root-toast";
-// import envs from '../../../Config/env';
 
-const BACKEND_URL = "http://127.0.0.1:8000/";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const CreatePlaylist = () => {
   const [toast, setToast] = useState(null);
@@ -61,7 +54,7 @@ const CreatePlaylist = () => {
   // Authenticate Spotify
   const authenticateSpotify = async () => {
     const isSpotifyAuth = await authContext?.isSpotifyAuth();
-    isSpotifyAuth === "true" ? router.push("../spotify-playlist") : null;
+    isSpotifyAuth === "true" ? router.push("/screens/spotify-playlist") : null;
     isSpotifyAuth === "false" ? authContext?.authSpotify() : null;
   };
 

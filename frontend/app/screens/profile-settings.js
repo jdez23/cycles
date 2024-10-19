@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   SafeAreaView,
   Alert,
   TouchableOpacity,
@@ -114,26 +113,6 @@ const ProfileSettings = () => {
         <View style={{ height: 50, width: 50 }} />
       </View>
       <View style={{ paddingHorizontal: 12 }}>
-        {/* <TouchableOpacity
-          onPress={() => router.push("screens/service-screen")}
-          style={{ paddingTop: 12 }}
-        >
-          <View
-            style={{
-              justifyContent: "space-between",
-              height: 30,
-              flexDirection: "row",
-              alignItems: "center",
-              borderBottomColor: "#262626",
-            }}
-          >
-            <Text style={{ fontSize: 14, color: "white" }}>Services</Text>
-            <Ionicons
-              name="chevron-forward"
-              style={{ color: "white", fontSize: 20 }}
-            />
-          </View>
-        </TouchableOpacity> */}
         <TouchableOpacity
           onPress={() => onSignOut()}
           style={{ paddingTop: 12 }}

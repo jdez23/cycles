@@ -9,7 +9,6 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.exceptions import ValidationError
 from django.http import JsonResponse
 import logging
-import boto3
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         user = self.request.user.id
         old_avi_pic = User.objects.get(id=user).avi_pic
-        avi_pic = request.data.get('avi_pic')
+        avi_pic = request.FILES.get('avi_pic')
         name = request.data.get('name')
         username = request.data.get('username')
         bio = request.data.get('bio')
@@ -111,13 +110,14 @@ class UserViewSet(viewsets.ModelViewSet):
             _user.bio = bio
             _user.spotify_url = spotify_url
 
-            _user.save(update_fields=['avi_pic',
-                                      'name', 'username', 'bio', 'spotify_url'])
+            _user.save(update_fields=['avi_pic', 'name',
+                       'username', 'bio', 'spotify_url'])
 
-            return Response(status=status.HTTP_200_OK)
+            return Response({"detail": "Profile updated successfully"}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.exception("-------", e)
+            logger.exception("Error updating profile: %s", e)
+            return Response({"error": "An error occurred while updating the profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         try:

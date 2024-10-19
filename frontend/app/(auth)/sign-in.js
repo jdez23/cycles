@@ -11,7 +11,6 @@ import { router } from "expo-router";
 import { Context as AuthContext } from "../../context/auth-context";
 import PhoneInput from "react-native-phone-number-input";
 import Toast from "react-native-root-toast";
-import spotify_logo from "/Users/jessehernandez/Documents/DevProjects/cycles/frontend/assets/logos/Spotify_Icon_RGB_Green.png";
 import cycleshuman_1 from "/Users/jessehernandez/Documents/DevProjects/cycles/frontend/assets/logos/cycles_human.png";
 
 const SignIn = () => {

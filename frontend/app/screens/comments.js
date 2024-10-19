@@ -438,15 +438,18 @@ const CommentsScreen = () => {
             ) : null
           }
         ></FlatList>
-        <View
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{
             flexDirection: "row",
             borderTopWidth: 0.5,
-            borderTopColor: "#121212",
+            borderTopColor: "#1f1f1f",
             paddingHorizontal: 12,
             height: "auto",
             paddingVertical: 12,
             minHeight: 75,
+            alignItems: "center",
+            bottom: 10,
           }}
         >
           <TextInput
@@ -459,7 +462,7 @@ const CommentsScreen = () => {
               flex: 1,
               borderWidth: 1,
               borderRadius: 30,
-              borderColor: "#121212",
+              borderColor: "#252525",
               paddingHorizontal: 12,
               paddingVertical: 12,
               alignSelf: "center",
@@ -478,7 +481,6 @@ const CommentsScreen = () => {
               width: 60,
               alignItems: "center",
               justifyContent: "center",
-              alignSelf: "flex-end",
             }}
           >
             <Text
@@ -490,7 +492,7 @@ const CommentsScreen = () => {
               Post
             </Text>
           </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -502,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 50,
     flexDirection: "row",
-    borderBottomColor: "#121212",
+    borderBottomColor: "#252525",
     borderBottomWidth: 0.5,
   },
   inboxtext: {

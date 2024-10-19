@@ -1,10 +1,8 @@
-import { Linking } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import axios from "axios";
-import { firebase } from "@react-native-firebase/auth";
 import context from "./context";
 
-const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const defaultValue = {
   userProfileData: [],

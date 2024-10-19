@@ -3,10 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import axios from "axios";
 import { firebase } from "@react-native-firebase/auth";
 import context from "./context";
-// import envs from "../Config/env";
 
-// const BACKEND_URL = envs.PROD_URL;
-const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // Get Token/User from storage
 const getToken = async () => {

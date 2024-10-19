@@ -31,7 +31,7 @@ const ProfileScreen = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   const params = useLocalSearchParams();
-  const { userID } = params;
+  const { userID, id } = params;
   const authContext = useContext(AuthContext);
   const playlistContext = useContext(PlaylistContext);
   const profileData = playlistContext?.state?.userProfileData;
@@ -53,14 +53,14 @@ const ProfileScreen = () => {
     }
   }, [playlistContext?.state?.errorMessage]);
 
-  console.log(playlistData);
-
   useEffect(() => {
     const fetchData = async () => {
       const user = await authContext?.getCurrentUser();
       setCurrentUser(user);
-      await playlistContext?.getPlaylistData(userID);
-      const isUserFollowing = await playlistContext?.getProfileData(userID);
+      await playlistContext?.getPlaylistData(userID || id);
+      const isUserFollowing = await playlistContext?.getProfileData(
+        userID || id
+      );
       setIsFollowing(isUserFollowing);
     };
     fetchData();
@@ -78,11 +78,10 @@ const ProfileScreen = () => {
   //Navigate to playlist detail screen
   const onPlaylistDetail = async (item) => {
     router.push({
-      pathname: "playlist-screen",
+      pathname: "/screens/playlist-screen",
       params: {
         playlist_id: item.id,
         userToken: authContext?.state.token,
-        fromTab: "user-profile",
       },
     });
   };
@@ -91,30 +90,33 @@ const ProfileScreen = () => {
 
   const onEditProfile = () =>
     router.push({
-      pathname: "edit-profile",
+      pathname: "/screens/edit-profile",
       params: profileData,
     });
 
   const onFollowUser = () => {
-    playlistContext?.followUser({ to_user: userID, currentUser });
+    playlistContext?.followUser({ to_user: userID || id, currentUser });
     setIsFollowing(true);
   };
 
   const onUnfollowUser = () => {
-    playlistContext?.unfollowUser({ to_user: userID, currentUser });
+    playlistContext?.unfollowUser({
+      to_user: userID || id,
+      currentUser,
+    });
     setIsFollowing(false);
   };
 
   const onFollowers = () => {
     router.navigate({
-      pathname: "followers-list",
+      pathname: "/screens/followers-list",
       params: { user_id: currentUser },
     });
   };
 
   const onFollowing = (item) => {
     router.navigate({
-      pathname: "following-list",
+      pathname: "/screens/following-list",
       params: item,
     });
   };
@@ -122,7 +124,7 @@ const ProfileScreen = () => {
   const loadMore = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getPlaylistData(userID, nextPage);
+      await playlistContext?.getPlaylistData(userID || id, nextPage);
       setLoading(false);
     }
   };
@@ -177,7 +179,7 @@ const ProfileScreen = () => {
               </View>
             </TouchableOpacity>
           )}
-          {currentUser === userID ? (
+          {currentUser == id || userID ? (
             <TouchableOpacity onPress={() => onEditProfile()}>
               <View style={styles.editProfileButton}>
                 <Text style={styles.editProfileText}>Edit Profile</Text>

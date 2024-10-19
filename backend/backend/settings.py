@@ -26,9 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['cycles-app-11ce5033b5eb.herokuapp.com']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.cycles-11ce5033b5eb.herokuapp.com']
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
@@ -50,6 +53,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'storages',
 
     'rest_framework',
 
@@ -109,18 +114,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'])}
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'd56ui9teqks0jo',
-        'USER': 'ueb6dejo5h23g2',
-        'PASSWORD': 'paef983f8c5dce57df7ac640dcd35634e5c5a7fc6c7eab1e8792778c170fa6fae',
-        'HOST': 'cd27da2sn4hj7h.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com',
-        'PORT': '5432'
-    }
-}
+DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'])}
 
 
 # Password validation
@@ -157,7 +151,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+# STATIC_URL = 'static/'
+MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -169,12 +165,20 @@ FIREBASE_CONFIG = os.path.join(BASE_DIR, 'firebase-config.json')
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
 AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
-AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
 AWS_S3_REGION_NAME = os.environ['AWS_S3_REGION_NAME']
+AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
 AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
 AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
 AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
 AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
-DEFAULT_FILE_STORAGE = os.environ['DEFAULT_FILE_STORAGE']
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+}
 
 django_heroku.settings(locals())
