@@ -151,7 +151,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/media/'
+MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, '/media/')
 
 
