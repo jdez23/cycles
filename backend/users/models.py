@@ -16,7 +16,7 @@ class User(AbstractUser):
     firebase_id = models.CharField(
         max_length=400, null=True, blank=True)
     avi_pic = models.ImageField(
-        upload_to='avi/', default='media/avi/default_avi.jpg', blank=True)
+        upload_to='avi/', default='default_avi.jpg')
     name = models.CharField(max_length=50, blank=True, null=True, default="")
     username = models.CharField(max_length=30, unique=True)
     location = models.CharField(

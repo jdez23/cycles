@@ -152,7 +152,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, '/media/')
+MEDIA_ROOT = '/media/'
 
 
 # Default primary key field type
