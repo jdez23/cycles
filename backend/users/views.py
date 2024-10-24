@@ -88,28 +88,23 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
     def update(self, request, *args, **kwargs):
-        user = self.request.user.id
-        old_avi_pic = User.objects.get(id=user).avi_pic
-        avi_pic = request.FILES.get('avi_pic')
-        name = request.data.get('name')
-        username = request.data.get('username')
-        bio = request.data.get('bio')
-        spotify_url = request.data.get('spotify_url')
-
         try:
-            # Delete old avi from S3
-            if old_avi_pic:
-                old_avi_pic = None
+            user = self.request.user.id
+            avi_pic = request.FILES.get('avi_pic')
 
-            # Update user model
             _user = User.objects.get(id=user)
+            _user.name = request.data.get('name', _user.name)
+            _user.username = request.data.get('username', _user.username)
+            _user.bio = request.data.get('bio', _user.bio)
+            _user.spotify_url = request.data.get(
+                'spotify_url', _user.spotify_url)
 
-            _user.avi_pic = avi_pic
-            _user.name = name
-            _user.username = username
-            _user.bio = bio
-            _user.spotify_url = spotify_url
+            # Only update the avi_pic if a new one is uploaded
+            if avi_pic:
+                # Assign the new file to the model's avi_pic field
+                _user.avi_pic = avi_pic
 
+            # Save the user details (including avi_pic if uploaded)
             _user.save(update_fields=['avi_pic', 'name',
                        'username', 'bio', 'spotify_url'])
 

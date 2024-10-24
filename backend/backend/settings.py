@@ -35,7 +35,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
-    "http://localhost:8082",
     "http://localhost:3000",
     "http://cycles-app-11ce5033b5eb.herokuapp.com",
     "https://cycles-app-11ce5033b5eb.herokuapp.com",
@@ -151,8 +150,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-# STATIC_URL = 'static/'
-MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/'
+STATIC_URL = 'static/'
+MEDIA_URL = 'MEDIA/'
+MEDIA_ROOT = 'https://cyclesapp.s3.amazonaws.com/'
 
 
 # Default primary key field type
@@ -174,11 +174,11 @@ AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
+        "BACKEND": os.environ["DEFAULT_FILE_STORAGE"],
     },
     "staticfiles": {
-        "BACKEND": "storages.backends.s3.S3Storage",
+        "BACKEND": os.environ["DEFAULT_FILE_STORAGE"],
     },
 }
 
-django_heroku.settings(locals())
+django_heroku.settings(locals(), staticfiles=False)

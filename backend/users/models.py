@@ -3,11 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
-# from django.dispatch import receiver
-
 from django.utils.translation import gettext_lazy as _
-
-# from firebase_auth.authentication import FirebaseAuthentication
 
 
 user = settings.AUTH_USER_MODEL
@@ -20,7 +16,7 @@ class User(AbstractUser):
     firebase_id = models.CharField(
         max_length=400, null=True, blank=True)
     avi_pic = models.ImageField(
-        upload_to='avi/', default=None, blank=True, null=True)
+        upload_to='avi/', default='media/default_avi.jpg', blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True, default="")
     username = models.CharField(max_length=30, unique=True)
     location = models.CharField(

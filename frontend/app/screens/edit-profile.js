@@ -26,8 +26,7 @@ const window = Dimensions.get("window").width;
 
 const EditProfile = () => {
   const params = useLocalSearchParams();
-  const segments = useSegments();
-  const { avi_pic, name, username, bio, spotify_url, fromTab, userID } = params;
+  const { avi_pic, name, username, bio, spotify_url } = params;
   const authContext = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [new_avi_pic, setAviPic] = useState(avi_pic);
@@ -89,7 +88,7 @@ const EditProfile = () => {
     formData.append("spotify_url", new_spotify_url ? new_spotify_url : "null");
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/users/user/${currentUser}/`,
+        `${BACKEND_URL}/users/user/${currentUser}/`,
         formData,
         {
           headers: {

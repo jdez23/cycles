@@ -239,10 +239,18 @@ const getMyProfileData = (dispatch) => async () => {
           myProfileData: res.data,
         });
       });
-  } catch (err) {
+  } catch (error) {
+    // Extract error message from the response if available
+    let errorMessage = "Something wrong. Please try again.";
+    if (error.response && error.response.data) {
+      errorMessage = error.response.data.message || errorMessage;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     dispatch({
       type: "error_1",
-      payload: "Something went wrong. Please try again.",
+      payload: errorMessage,
     });
   }
 };

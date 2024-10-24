@@ -213,8 +213,11 @@ class MyPlaylists(APIView):
             response = execute_spotify_api_request(user, endpoint)
 
             # Check if tracks are successfully retrieved
-            if "items" not in response:
-                return JsonResponse({'error': 'Failed to retrieve playlist tracks from the Spotify API.'}, status=500)
+            if not response or "items" not in response:
+                return Response(
+                    {'error': 'Failed to retrieve playlist tracks from the Spotify API.'},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
 
             # # Initialize an empty list for the tracks
             tracks = []
@@ -257,7 +260,11 @@ class MyPlaylists(APIView):
                 PlaylistTracksSerializer(playlist_track)
             return Response(status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.exception("-------", e)
+            logger.exception("Error saving playlist and tracks")
+            return Response(
+                {'error': 'An error occurred while saving to the database.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def delete(self, request, format=None):
         playlist_id = request.GET.get('id')

@@ -17,6 +17,7 @@ import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
 import Toast from "react-native-root-toast";
+import axios from "axios";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -72,7 +73,7 @@ const CreatePlaylist = () => {
       };
       const res = await authContext?.spotifyLogin(data);
       if (res == "true") {
-        router.push("spotify-playlist");
+        router.push("/screens/spotify-playlist");
       } else {
         null;
       }
@@ -81,39 +82,58 @@ const CreatePlaylist = () => {
 
   //Post playlist to API
   const postPlaylist = async () => {
-    const token = await getToken();
     setLoading(true);
-    const formData = new FormData();
-    formData.append("playlist_url", selected_playlist.external_urls.spotify);
-    formData.append("playlist_ApiURL", selected_playlist.href);
-    formData.append("playlist_id", selected_playlist.id);
-    formData.append("playlist_cover", selected_playlist.images[0].url);
-    formData.append("playlist_title", selected_playlist.name);
-    formData.append("playlist_type", selected_playlist.type);
-    formData.append("playlist_uri", selected_playlist.uri);
-    formData.append("playlist_tracks", selected_playlist.tracks.href);
     try {
-      const res = await fetch(`${BACKEND_URL}/feed/my-playlists/`, {
-        method: "POST",
-        headers: {
-          Authorization: token,
-          Accept: "application/json",
-        },
-        body: formData,
-      });
-      if (res.status === 201) {
-        setLoading(false);
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append("playlist_url", selected_playlist.external_urls.spotify);
+      formData.append("playlist_ApiURL", selected_playlist.href);
+      formData.append("playlist_id", selected_playlist.id);
+      formData.append("playlist_cover", selected_playlist.images[0].url);
+      formData.append("playlist_title", selected_playlist.name);
+      formData.append("playlist_type", selected_playlist.type);
+      formData.append("playlist_uri", selected_playlist.uri);
+      formData.append("playlist_tracks", selected_playlist.tracks.href);
+
+      const response = await axios.post(
+        `${BACKEND_URL}/feed/my-playlists/`,
+        formData,
+        {
+          headers: {
+            Authorization: token,
+            "Content-Type": "multipart/form-data",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (response.status === 201) {
         playlistContext?.clearSelectedPlaylist();
         playlistContext?.getFollowersPlaylists();
         router.push("(tabs)/home");
+      } else {
+        // Handle unexpected status codes
+        authContext?.dispatch({
+          type: "error_1",
+          payload: "Failed to post playlist.",
+        });
       }
-    } catch (e) {
+    } catch (error) {
+      // Extract error message from the response if available
+      let errorMessage = "Something went wrong. Please try again.";
+      if (error.response && error.response.data) {
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       authContext?.dispatch({
         type: "error_1",
-        payload: "Something went wrong. Please try again.",
+        payload: errorMessage,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   //Navigate back to previous screen
