@@ -16,7 +16,7 @@ import Toast from "react-native-root-toast";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.png";
-import default_avi from "../../assets/images/default_avi.jpg";
+// import default_avi from "../../assets/images/default_avi.jpg";
 import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import moment from "moment";
@@ -106,9 +106,7 @@ const MyProfile = () => {
           <Image
             style={styles.avatar}
             source={
-              myProfileData?.avi_pic
-                ? { uri: myProfileData?.avi_pic }
-                : default_avi
+              myProfileData?.avi_pic ? { uri: myProfileData?.avi_pic } : null
             }
           />
         </View>
