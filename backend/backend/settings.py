@@ -150,9 +150,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
-MEDIA_ROOT = '/media/'
+# STATIC_URL = 'static/'
+MEDIA_ROOT = 'https://cyclesapp.s3.us-east-1.amazonaws.com/'
+MEDIA_URL = 'media/'
 
 
 # Default primary key field type
