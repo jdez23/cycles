@@ -153,7 +153,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 if not DEBUG:
-    MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
+    MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/media/'
     DEFAULT_FILE_STORAGE = 'backend.storage_backends.MediaStorage'
 else:
     MEDIA_URL = '/media/'
