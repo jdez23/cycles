@@ -39,40 +39,6 @@ class CreateUser(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class CreateUser(APIView):
-#     queryset = User.objects.all()
-
-#     def post(self, request):
-#         fb_id = request.data.get('token')
-#         username = request.data.get('username')
-
-#         try:
-#             # Check if username already exists in the user database
-#             if User.objects.filter(username=username).exists():
-#                 return Response({'error': 'Username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
-
-#             if any(char not in allowed_characters for char in username):
-#                 return Response({'error': 'Invalid characters in username.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Create and save the new user
-#             user = User.objects.create(
-#                 firebase_id=fb_id, username=username)
-#             user.save()
-
-#             serializer = UserRegisterSerializer(user)
-
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-#         except ValidationError as e:
-#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-#         except Exception as e:
-#             # Log the exception for debugging purposes
-#             print(f"Error: {e}")
-#             return Response({'error': 'An unexpected error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class Login(APIView):
     queryset = User.objects.all()
 
