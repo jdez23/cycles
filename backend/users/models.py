@@ -10,13 +10,9 @@ user = settings.AUTH_USER_MODEL
 
 
 class User(AbstractUser):
-    is_superuser = models.BooleanField(default=False)
-    is_staff = models.BooleanField(default=True)
-    is_active = models.BooleanField(default=True)
-    firebase_id = models.CharField(
-        max_length=400, null=True, blank=True)
+    firebase_id = models.CharField(max_length=400, null=True, blank=True)
     avi_pic = models.ImageField(
-        upload_to='media/avi/', default='/media/avi/default_avi.jpg')
+        upload_to='avi/', default='avi/default_avi.jpg', null=True, blank=True)
     name = models.CharField(max_length=50, blank=True, null=True, default="")
     username = models.CharField(max_length=30, unique=True)
     location = models.CharField(
@@ -24,6 +20,9 @@ class User(AbstractUser):
     bio = models.CharField(max_length=150, null=True, blank=True, default='')
     spotify_url = models.CharField(
         max_length=3000, null=True, blank=True, default='')
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.username

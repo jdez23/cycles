@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['cycles-app-11ce5033b5eb.herokuapp.com']
 
@@ -150,9 +150,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-# STATIC_URL = 'static/'
-MEDIA_ROOT = 'https://cyclesapp.s3.us-east-1.amazonaws.com/'
-MEDIA_URL = 'media/'
+STATIC_URL = 'static/'
+
+if not DEBUG:
+    MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
+    DEFAULT_FILE_STORAGE = 'backend.storage_backends.MediaStorage'
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # Default primary key field type
@@ -171,14 +176,5 @@ AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
 AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
 AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
 AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
-
-STORAGES = {
-    "default": {
-        "BACKEND": os.environ["DEFAULT_FILE_STORAGE"],
-    },
-    "staticfiles": {
-        "BACKEND": os.environ["DEFAULT_FILE_STORAGE"],
-    },
-}
 
 django_heroku.settings(locals(), staticfiles=False)
