@@ -79,9 +79,9 @@ class UserSerializer(serializers.ModelSerializer):
     def get_followers(self, obj):
         return FollowSerializer(obj.followers.all(), many=True).data
 
-    def get_avatar(self, obj):
-        if obj.avatar:
-            return obj.avatar.url
+    def get_avi_pic(self, obj):
+        if obj.avi_pic:
+            return obj.avi_pic.url
         return "https://cyclesapp.s3.amazonaws.com/media/avi/default_avatar.png"
 
 
