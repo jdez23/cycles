@@ -102,6 +102,7 @@ const EditProfile = () => {
         router.back();
       }
     } catch (error) {
+      console.error("-----", error);
       authContext?.dispatch({
         type: "error_1",
         payload: "Something went wrong. Please try again.",

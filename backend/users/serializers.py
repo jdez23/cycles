@@ -33,10 +33,12 @@ class UserLoginSerializer(serializers.ModelSerializer):
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
+    avi_pic = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('firebase_id', 'id', 'username')
+        fields = ('firebase_id', 'id', 'username', 'avi_pic',
+                  'name', 'location', 'bio', 'spotify_url')
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
@@ -50,6 +52,11 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return User.objects.create(**validated_data)
 
+# class UserRegisterSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ('firebase_id', 'id', 'username')
+
 
 class UserSerializer(serializers.ModelSerializer):
     following = serializers.SerializerMethodField('get_following')
@@ -62,27 +69,16 @@ class UserSerializer(serializers.ModelSerializer):
                   'name', 'username', 'location',
                   'bio', 'spotify_url', 'following', 'followers']
 
-    def validate_username(self, value):
-        user = self.instance
-        if user and user.username != value:
-            if User.objects.filter(username=value).exists():
-                raise serializers.ValidationError("Username is already taken.")
-        allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
-        if any(char not in allowed_characters for char in value):
-            raise serializers.ValidationError(
-                "Invalid characters in username.")
-        return value
-
     def get_following(self, obj):
+        return FollowSerializer(obj.follower.all(), many=True).data
+
+    def get_follower(self, obj):
         return FollowSerializer(obj.following.all(), many=True).data
 
-    def get_followers(self, obj):
-        return FollowSerializer(obj.followers.all(), many=True).data
-
-    def get_avi_pic(self, obj):
+    def get_avi_pic_url(self, obj):
         if obj.avi_pic:
             return obj.avi_pic.url
-        return "https://cyclesapp.s3.amazonaws.com/media/avi/default_avatar.png"
+        return None
 
 
 class FollowSerializer(serializers.ModelSerializer):

@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.exceptions import ValidationError
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
 import logging
 
@@ -32,12 +31,37 @@ class CustomAuthToken(ObtainAuthToken):
 
 
 class CreateUser(APIView):
+    queryset = User.objects.all()
+
     def post(self, request):
-        serializer = UserRegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
+        fb_id = request.data.get('token')
+        username = request.data.get('username')
+
+        try:
+            # Check if username already exists in the user database
+            if User.objects.filter(username=username).exists():
+                return Response({'error': 'Username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
+
+            if any(char not in allowed_characters for char in username):
+                return Response({'error': 'Invalid characters in username.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create and save the new user
+            user = User.objects.create(
+                firebase_id=fb_id, username=username)
+            user.save()
+
+            serializer = UserRegisterSerializer(user)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Log the exception for debugging purposes
+            print(f"Error: {e}")
+            return Response({'error': 'An unexpected error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class Login(APIView):
@@ -59,22 +83,44 @@ class Login(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
+    permission_class = [permissions.IsAuthenticated]
     serializer_class = UserSerializer
-
-    def get_queryset(self):
-        # Ensure users can only access their own data
-        return User.objects.filter(id=self.request.user.id)
+    queryset = User.objects.all()
 
     def update(self, request, *args, **kwargs):
-        # Use the built-in update method with the serializer
-        kwargs['partial'] = True  # Allow partial updates
-        return super().update(request, *args, **kwargs)
+        try:
+            user = self.request.user.id
+            avi_pic = request.FILES.get('avi_pic')
 
-    def destroy(self, request, *args, **kwargs):
-        # Use the built-in destroy method
-        return super().destroy(request, *args, **kwargs)
+            _user = User.objects.get(id=user)
+            _user.name = request.data.get('name', _user.name)
+            _user.username = request.data.get('username', _user.username)
+            _user.bio = request.data.get('bio', _user.bio)
+            _user.spotify_url = request.data.get(
+                'spotify_url', _user.spotify_url)
+
+            # Only update the avi_pic if a new one is uploaded
+            if avi_pic:
+                # Assign the new file to the model's avi_pic field
+                _user.avi_pic = avi_pic
+
+            # Save the user details (including avi_pic if uploaded)
+            _user.save(update_fields=['avi_pic', 'name',
+                       'username', 'bio', 'spotify_url'])
+
+            return Response({"detail": "Profile updated successfully"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception("Error updating profile: %s", e)
+            return Response({"error": "An error occurred while updating the profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, pk):
+        try:
+            User.objects.get(pk=pk).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            logger.exception("-------", e)
 
 
 # Follow or Unfollow user
