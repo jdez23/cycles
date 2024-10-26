@@ -33,11 +33,10 @@ class UserLoginSerializer(serializers.ModelSerializer):
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
-    avi_pic = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('firebase_id', 'id', 'username', 'avi_pic')
+        fields = ('firebase_id', 'id', 'username')
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
@@ -79,6 +78,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_followers(self, obj):
         return FollowSerializer(obj.followers.all(), many=True).data
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            return obj.avatar.url
+        return "https://cyclesapp.s3.amazonaws.com/media/avi/default_avatar.png"
 
 
 class FollowSerializer(serializers.ModelSerializer):

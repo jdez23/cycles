@@ -151,13 +151,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = 'https://cyclesapp.s3.amazonaws.com/media'
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-if not DEBUG:
-    MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/media/'
-    DEFAULT_FILE_STORAGE = 'backend.storage_backends.MediaStorage'
-else:
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# if not DEBUG:
+#     print('DEBUG FALSE')
+#     MEDIA_ROOT = 'https://cyclesapp.s3.amazonaws.com/media'
+#     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+# else:
+#     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # Default primary key field type
