@@ -175,7 +175,6 @@ AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
 AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
 AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
 AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
-AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
-AWS_LOCATION = 'media'
+# AWS_S3_VERIFY = os.environ['AWS_S3_VERIFY']
 
 django_heroku.settings(locals(), staticfiles=False)
