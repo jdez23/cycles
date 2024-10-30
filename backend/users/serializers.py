@@ -61,7 +61,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     following = serializers.SerializerMethodField('get_following')
     followers = serializers.SerializerMethodField('get_follower')
-    avi_pic = serializers.ImageField(required=False, allow_null=True)
+    avi_pic = serializers.ImageField(required=False)
 
     class Meta:
         model = User
