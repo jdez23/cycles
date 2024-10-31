@@ -222,25 +222,26 @@ class MyPlaylists(APIView):
             # # Initialize an empty list for the tracks
             tracks = []
 
-            # # Loop through the items in the playlist
+            # Loop through the items in the playlist
             for item in response["items"]:
+                # Check if the track and its album images exist
+                if item["track"] and item["track"]["album"]["images"]:
+                    # Initialize an empty dictionary for the current track
+                    track = {}
 
-                # # Initialize an empty dictionary for the current track
-                track = {}
+                    # Extract data from Spotify API playlist
+                    track["artist"] = item["track"]["artists"][0]["name"]
+                    track["album"] = item["track"]["album"]["name"]
+                    track["name"] = item["track"]["name"]
+                    track["track_id"] = item["track"]["external_urls"]["spotify"]
+                    track["uri"] = item["track"]["uri"]
+                    track["preview_url"] = item["track"]["preview_url"]
 
-                # Extract data from spotify api playlist
-                track["artist"] = item["track"]["artists"][0]["name"]
-                track["album"] = item["track"]["album"]["name"]
-                track["name"] = item["track"]["name"]
-                track["track_id"] = item["track"]["external_urls"]['spotify']
-                track["uri"] = item["track"]["uri"]
-                track["preview_url"] = item["track"]["preview_url"]
-                track["images"] = item["track"]["album"]["images"][0]["url"] if item["track"]["album"]["images"] else "None"
+                    # Get the largest album image
+                    track["images"] = item["track"]["album"]["images"][0]["url"]
 
-                # Add the current track to the list of tracks
-                tracks.append(track)
-
-            print(tracks)
+                    # Add the current track to the list of tracks
+                    tracks.append(track)
 
             # Save playlist to database
             playlist = Playlist.objects.create(
