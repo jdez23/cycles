@@ -42,17 +42,14 @@ const MainLayout = () => {
     const unsubscribeOnNotificationOpened = messaging().onNotificationOpenedApp(
       (remoteMessage) => {
         if (remoteMessage) {
-          router.replace("notifs");
+          router.replace("/notifs");
         }
       }
     );
 
     // Gets notif when phone/app is off
     const getInitialNotification = async () => {
-      const remoteMessage = await messaging().getInitialNotification();
-      if (remoteMessage) {
-        console.log("remote message", remoteMessage.notification);
-      }
+      await messaging().getInitialNotification();
     };
     getInitialNotification();
 

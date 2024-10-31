@@ -459,77 +459,28 @@ const Playlist = () => {
 
   const playlistTracks = ({ item }) => {
     return (
-      <View
-        style={{
-          justifyContent: "center",
-          width: window,
-          marginTop: 12,
-        }}
-      >
+      <View style={styles.trackContainer}>
         <TouchableOpacity
           onPress={() => playSound(item)}
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            paddingVertical: 4,
-            paddingHorizontal: 12,
-            alignItems: "center",
-          }}
+          style={styles.trackRow}
         >
-          <View
-            style={{
-              paddingTop: 7,
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
+          <View style={styles.trackInfo}>
             <Image
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 3,
-              }}
+              style={styles.trackAlbumCover}
               source={{ uri: item?.images }}
             />
-            <View
-              style={{
-                flexDirection: "column",
-                alignSelf: "center",
-                paddingLeft: 10,
-                maxWidth: "80%",
-              }}
-            >
+            <View style={styles.trackDetails}>
               <Text
+                style={styles.trackTitle}
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{
-                  color: "white",
-                  fontSize: 13,
-                  fontWeight: "600",
-                  width: "100%",
-                }}
               >
                 {item?.name}
               </Text>
-              <Text
-                style={{
-                  marginTop: 2,
-                  color: "lightgrey",
-                  fontSize: 13,
-                  fontWeight: "500",
-                }}
-              >
-                {item?.artist}
-              </Text>
+              <Text style={styles.trackArtist}>{item?.artist}</Text>
             </View>
           </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
+          <View style={styles.trackIconContainer}>
             {isPlaying && item.id === currentTrackId ? (
               <Progress.Circle
                 size={17}
@@ -537,23 +488,15 @@ const Playlist = () => {
                 thickness={1.2}
                 color="darkgrey"
                 borderWidth={0}
-                style={{ marginRight: 15 }}
+                style={styles.progressCircle}
               />
             ) : null}
             <Pressable
-              style={{
-                height: 25,
-                width: 25,
-                borderRadius: 30,
-                backgroundColor: "#1f1f1f",
-                alignItems: "center",
-                justifyContent: "center",
-                marginLeft: 10,
-              }}
+              style={styles.spotifyIcon}
               onPress={() => Linking.openURL(item?.track_id)}
             >
               <Image
-                style={{ width: 15, height: 15 }}
+                style={styles.spotifyImage}
                 source={Spotify_Icon_RGB_Green}
               />
             </Pressable>
@@ -669,8 +612,66 @@ const styles = StyleSheet.create({
     color: "white",
     justifyContent: "center",
   },
-  progress_bar: {
-    height: 20,
+  trackContainer: {
+    justifyContent: "center",
+    width: window,
+    marginTop: 12,
+  },
+  trackRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  trackInfo: {
+    paddingTop: 7,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  trackAlbumCover: {
+    width: 50,
+    height: 50,
+    resizeMode: "cover",
+    borderRadius: 3,
+  },
+  trackDetails: {
+    flexDirection: "column",
+    alignSelf: "center",
+    paddingLeft: 10,
+    maxWidth: "70%", // Allows for truncation without pushing the Spotify icon
+  },
+  trackTitle: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "600",
+    width: "100%",
+  },
+  trackArtist: {
+    marginTop: 2,
+    color: "lightgrey",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  trackIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  progressCircle: {
+    marginRight: 15,
+  },
+  spotifyIcon: {
+    height: 25,
+    width: 25,
+    borderRadius: 30,
+    backgroundColor: "#1f1f1f",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+  spotifyImage: {
+    width: 15,
+    height: 15,
   },
 });
 

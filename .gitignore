@@ -1,5 +1,5 @@
 env/
-backend/backend/firebase-config.json
+backend/firebase-config.json
 frontend/.env
 frontend/google-services.json
 frontend/GoogleService-Info.plist

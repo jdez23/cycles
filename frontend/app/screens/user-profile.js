@@ -204,10 +204,10 @@ const ProfileScreen = () => {
   };
 
   const renderPlaylistData = ({ item }) => (
-    <View style={styles.playlistContainer}>
+    <View style={styles.itemContainer}>
       <Pressable
         onPress={() => onPlaylistDetail(item)}
-        style={styles.playlistCard}
+        style={styles.playlistContainer}
       >
         <Image
           style={styles.playlistCover}
@@ -223,10 +223,7 @@ const ProfileScreen = () => {
           style={styles.spotifyButton}
           onPress={() => Linking.openURL(item.playlist_url)}
         >
-          <Image
-            style={{ width: 15, height: 15 }}
-            source={Spotify_Icon_RGB_Green}
-          />
+          <Image style={styles.spotifyIcon} source={Spotify_Icon_RGB_Green} />
         </Pressable>
       </Pressable>
       <Text style={styles.timestamp}>{moment(item.date).fromNow()}</Text>
@@ -357,12 +354,16 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   spotifyButton: {
-    height: 35,
-    width: 35,
+    height: 25,
+    width: 25,
     borderRadius: 30,
-    backgroundColor: "#181818",
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
+  },
+  spotifyIcon: {
+    width: 15,
+    height: 15,
   },
   editProfileButton: {
     height: 35,
@@ -400,21 +401,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "white",
   },
-  playlistContainer: {
-    justifyContent: "center",
+  itemContainer: {
     width: windowWidth,
     alignItems: "center",
     marginBottom: 14,
   },
-  playlistCard: {
+  playlistContainer: {
     width: windowWidth - 18,
     height: 120,
     backgroundColor: "#181818",
     borderRadius: 10,
-    justifyContent: "space-between",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 9,
+    justifyContent: "space-evenly",
   },
   playlistCover: {
     width: 100,
