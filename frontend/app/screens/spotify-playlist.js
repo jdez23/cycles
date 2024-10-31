@@ -186,7 +186,7 @@ const SpotifyPlaylist = () => {
         >
           <FlatList
             data={spotifyPlaylists}
-            // initialNumToRender={10}
+            initialNumToRender={10}
             extraData={selected_playlist}
             renderItem={renderSpotifyPlaylist}
             keyExtractor={(item) => item.id}

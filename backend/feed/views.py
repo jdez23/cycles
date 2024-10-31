@@ -235,11 +235,12 @@ class MyPlaylists(APIView):
                 track["track_id"] = item["track"]["external_urls"]['spotify']
                 track["uri"] = item["track"]["uri"]
                 track["preview_url"] = item["track"]["preview_url"]
-                print(item["track"]["album"]["images"][0]["url"])
                 track["images"] = item["track"]["album"]["images"][0]["url"] if item["track"]["album"]["images"] else "None"
 
                 # Add the current track to the list of tracks
                 tracks.append(track)
+
+            print(tracks)
 
             # Save playlist to database
             playlist = Playlist.objects.create(
