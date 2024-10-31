@@ -105,7 +105,9 @@ const MyProfile = () => {
         <View style={styles.avatarContainer}>
           <Image
             style={styles.avatar}
-            source={myProfileData?.avi_pic ? myProfileData?.avi_pic : null}
+            source={
+              myProfileData?.avi_pic ? { uri: myProfileData?.avi_pic } : null
+            }
           />
         </View>
         {myProfileData?.name && (
