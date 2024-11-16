@@ -35,17 +35,16 @@ const Playlist = () => {
   const params = useLocalSearchParams();
   const { playlist_id } = params;
 
+  const playlist = playlistContext?.state?.playlist;
+  const tracks = playlistContext?.state?.tracks;
+  const nextPage = playlistContext?.state?.pagination?.next;
+
   const [toast, setToast] = useState(null);
   const [sound, setSound] = useState(null);
   const [currentTrackId, setCurrentTrackId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [me, setMe] = useState(null);
-  const [isLiked, setIsLiked] = useState(playlistContext?.state?.isLiked?.data);
-
-  const playlist = playlistContext?.state?.playlist;
-  const tracks = playlistContext?.state?.tracks;
-  const nextPage = playlistContext?.state?.pagination?.next;
 
   const [loadingState, setLoadingState] = useState({
     isInitialLoading: true, // Initially loading
@@ -81,13 +80,22 @@ const Playlist = () => {
     setLoadingState((prev) => ({ ...prev, isInitialLoading: true }));
     const me = await authContext?.getCurrentUser();
     setMe(me);
-
     try {
       await playlistContext?.fetchPlaylist(playlist_id);
-      playlistContext?.checkIfLiked(playlist_id);
     } finally {
       setLoadingState((prev) => ({ ...prev, isInitialLoading: false }));
     }
+  };
+
+  const toggleLike = async () => {
+    try {
+      if (playlist?.isLiked) {
+        await playlistContext?.unlikePlaylist(playlist.id); // Call unlike API
+      } else {
+        await playlistContext?.likePlaylist(props); // Call like API
+      }
+      await playlistContext?.fetchPlaylist(playlist_id); // Refresh playlist details
+    } catch (error) {}
   };
 
   useEffect(() => {
@@ -105,18 +113,6 @@ const Playlist = () => {
       pathname: "./comments",
       params: props,
     });
-  };
-
-  // Unlike playlist
-  const onUnlike = () => {
-    playlistContext?.unlikePlaylist(playlist.id);
-    setIsLiked(false);
-  };
-
-  // Like playlist
-  const onLike = (props) => {
-    playlistContext?.likePlaylist(props);
-    setIsLiked(true);
   };
 
   const onUser = async () => {
@@ -361,15 +357,13 @@ const Playlist = () => {
                 justifyContent: "center",
               }}
             >
-              {isLiked == true ? (
-                <TouchableOpacity onPress={() => onUnlike()}>
-                  <FontAwesome name="heart" size={24} color={"red"} />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => onLike(props)}>
-                  <FontAwesome name="heart-o" size={24} color={"white"} />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity onPress={toggleLike}>
+                <FontAwesome
+                  name={playlist?.isLiked ? "heart" : "heart-o"}
+                  size={24}
+                  color={playlist?.isLiked ? "red" : "white"}
+                />
+              </TouchableOpacity>
             </View>
             <View
               style={{
