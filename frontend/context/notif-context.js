@@ -41,7 +41,7 @@ const notifReducer = (state, action) => {
 const resetCount = (dispatch) => () => {
   try {
     dispatch({ type: "NOTIF_COUNT", notifCount: 0 });
-    // PushNotificationIOS.setApplicationIconBadgeNumber(0);
+    PushNotificationIOS.setApplicationIconBadgeNumber(0);
   } catch (err) {
     null;
   }
@@ -49,8 +49,8 @@ const resetCount = (dispatch) => () => {
 
 const notifBadge = (dispatch) => () => {
   try {
-    // const badge_num = PushNotificationIOS.getApplicationIconBadgeNumber()
-    // PushNotificationIOS.setApplicationIconBadgeNumber(+1);
+    const badge_num = PushNotificationIOS.getApplicationIconBadgeNumber();
+    PushNotificationIOS.setApplicationIconBadgeNumber(+1);
     dispatch({ type: "NOTIF_COUNT", notifCount: +1 });
   } catch (err) {
     null;

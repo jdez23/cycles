@@ -58,7 +58,7 @@ const FollowersList = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     setLoadingData(true);
-    playlistContext?.getFollowers(id, nextPage);
+    playlistContext?.getFollowers(id || user_id, nextPage);
     loadingData == true ? (
       <View
         style={{
@@ -78,8 +78,7 @@ const FollowersList = () => {
 
   //Navigate to user profile
   const onUser = async (item) => {
-    const currentUser = await SecureStore.getItemAsync("user_id");
-    router.push("profile", { me: currentUser, userID: item.user });
+    router.push({ pathname: "./user-profile", params: { userID: item.user } });
   };
 
   const loadMore = async () => {

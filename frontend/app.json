@@ -11,6 +11,9 @@
       "backgroundColor": "#111111"
     },
     "ios": {
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -24,7 +27,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.cycles.frontend",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +49,7 @@
       "expo-secure-store",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      "@react-native-firebase/messaging",
       [
         "expo-build-properties",
         {
@@ -59,6 +67,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0c4193b9-a315-4c42-8fbc-302ad47cb7c9"
+      }
     }
   }
 }

@@ -366,18 +366,32 @@ const DiscoverFeed = () => {
           },
         });
         const searchResults = response.data;
-        setSearchNextPage(searchResults?.next);
-        // Append the new user data to the existing searchUsers state
-        setSearchUsers((prevUsers) => [
-          ...prevUsers,
-          ...searchResults?.results[0]?.users,
-        ]);
 
-        // Append the new playlist data to the existing searchPlaylists state
-        setSearchPlaylists((prevPlaylists) => [
-          ...prevPlaylists,
-          ...searchResults?.results[0]?.playlists,
-        ]);
+        // Ensure the search results contain the necessary structure
+        if (
+          searchResults &&
+          searchResults.results &&
+          searchResults.results.length > 0
+        ) {
+          const users = searchResults.results[0]?.users || [];
+          const playlists = searchResults.results[0]?.playlists || [];
+
+          setSearchNextPage(searchResults.next);
+
+          // Append the new user data to the existing searchUsers state
+          setSearchUsers((prevUsers) => [...prevUsers, ...users]);
+
+          // Append the new playlist data to the existing searchPlaylists state
+          setSearchPlaylists((prevPlaylists) => [
+            ...prevPlaylists,
+            ...playlists,
+          ]);
+        } else {
+          // Handle case when no data is found
+          setSearchNextPage(null);
+          setSearchUsers([]); // or keep previous users
+          setSearchPlaylists([]); // or keep previous playlists
+        }
       } catch (error) {}
   };
 

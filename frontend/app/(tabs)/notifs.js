@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Dimensions,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Context as NotifContext } from "../../context/notif-context";
 // import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -25,7 +26,9 @@ const NotificationsScreen = () => {
   const [toast, setToast] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const notif = notifContext?.state?.notifications;
+  const [loading, setLoading] = useState(false);
+  const notif = notifContext?.state?.notifications?.results;
+  const nextPage = notifContext?.state?.notifications?.next;
 
   useEffect(() => {
     if (notifContext?.state?.errorMessage) {
@@ -101,19 +104,27 @@ const NotificationsScreen = () => {
   const onNotif = async (item) => {
     if (item.type === "comment") {
       router.push({
-        pathname: "(screens)/comments",
-        params: { item },
+        pathname: "screens/comments",
+        params: { playlist_id: item.playlist_id },
       });
     } else if (item.type === "like") {
       router.push({
-        pathname: "(screens)/playlist-screen",
-        params: { item },
+        pathname: "screens/playlist-screen",
+        params: { playlist_id: item.playlist_id },
       });
     } else if (item.type === "follow") {
       router.push({
-        pathname: "(screens)/user-profile",
-        params: { item },
+        pathname: "screens/user-profile",
+        params: { id: item.from_user },
       });
+    }
+  };
+
+  const loadMore = async () => {
+    if (nextPage && !loading) {
+      setLoading(true);
+      await notifContext?.getNotifications(nextPage);
+      setLoading(false);
     }
   };
 
@@ -240,10 +251,15 @@ const NotificationsScreen = () => {
           </Text>
         </View>
         <FlatList
-          data={null}
+          data={notif}
           renderItem={_renderItem}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loading && <ActivityIndicator style={styles.loadingIndicator} />
+          }
         ></FlatList>
       </GestureHandlerRootView>
     </SafeAreaView>
@@ -263,6 +279,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "white",
+  },
+  loadingIndicator: {
+    marginVertical: 20,
   },
 });
 

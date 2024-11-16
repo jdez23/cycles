@@ -18,7 +18,6 @@ import axios from "axios";
 import Toast from "react-native-root-toast";
 import { Context as AuthContext } from "../../context/auth-context";
 import { router, useLocalSearchParams, useSegments } from "expo-router";
-import default_avi from "../../assets/images/default_avi.jpg";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -102,7 +101,6 @@ const EditProfile = () => {
         router.back();
       }
     } catch (error) {
-      console.error("-----", error);
       authContext?.dispatch({
         type: "error_1",
         payload: "Something went wrong. Please try again.",
@@ -176,13 +174,7 @@ const EditProfile = () => {
             <View style={styles.imageContainer}>
               <Image
                 style={styles.image}
-                source={
-                  new_avi_pic
-                    ? { uri: new_avi_pic }
-                    : avi_pic
-                    ? avi_pic
-                    : default_avi
-                }
+                source={new_avi_pic ? { uri: new_avi_pic } : avi_pic}
               />
               <Icon
                 name="camera"

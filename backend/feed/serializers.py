@@ -51,6 +51,7 @@ class UserPlaylistSerializer(serializers.ModelSerializer):
 
 class PlaylistDetailSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
+    isLiked = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
@@ -59,6 +60,10 @@ class PlaylistDetailSerializer(serializers.ModelSerializer):
     def get_username_from_user(self, playlist):
         username = playlist.user.username
         return username
+
+    def get_isLiked(self, playlist):
+        # Retrieve `is_liked` from the context passed in the view
+        return self.context.get('is_liked', False)
 
 
 class PlaylistTracksSerializer(serializers.ModelSerializer):

@@ -216,8 +216,6 @@ const playlistReducer = (state, action) => {
         ...state,
         followers: action.followers,
       };
-    default:
-      return state;
   }
 };
 
@@ -595,7 +593,7 @@ const comment = (dispatch) => async (props) => {
   const data = {
     to_user: props.to_user.toString(),
     title: "Cycles",
-    image: props.images[0].image,
+    image: props.playlist_cover,
   };
   try {
     const response = await axios.post(
@@ -881,12 +879,12 @@ const getFollowing =
 // Get list of following
 const getFollowers =
   (dispatch) =>
-  async (to_user, nextPage = null) => {
+  async (to_user, id, nextPage = null) => {
     const token = await SecureStore.getItemAsync("token");
     try {
       const url = nextPage
         ? nextPage
-        : `${BACKEND_URL}/users/user-followers/?user_id=${to_user}`;
+        : `${BACKEND_URL}/users/user-followers/?user_id=${to_user || id}`;
       const res = await axios.get(url, {
         headers: {
           "Content-Type": "application/json",
@@ -897,7 +895,7 @@ const getFollowers =
         const data = res?.data;
         dispatch({
           type: "followers",
-          following: data,
+          followers: data,
           append: !!nextPage,
         });
       }

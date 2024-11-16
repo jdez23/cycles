@@ -28,22 +28,25 @@ import * as Progress from "react-native-progress";
 const window = Dimensions.get("window").width;
 
 const Playlist = () => {
-  const params = useLocalSearchParams();
-  const { playlist_id } = params;
-  let actionSheet = useRef();
-  const optionArray = ["Delete", "Cancel"];
-  const [toast, setToast] = useState(null);
+  const actionSheet = useRef();
+  const optionArray = ["Delete", "Update", "Cancel"];
   const playlistContext = useContext(PlaylistContext);
   const authContext = useContext(AuthContext);
+  const params = useLocalSearchParams();
+  const { playlist_id } = params;
+
+  const [toast, setToast] = useState(null);
   const [sound, setSound] = useState(null);
   const [currentTrackId, setCurrentTrackId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [me, setMe] = useState(null);
   const [isLiked, setIsLiked] = useState(playlistContext?.state?.isLiked?.data);
+
   const playlist = playlistContext?.state?.playlist;
   const tracks = playlistContext?.state?.tracks;
   const nextPage = playlistContext?.state?.pagination?.next;
+
   const [loadingState, setLoadingState] = useState({
     isInitialLoading: true, // Initially loading
     isMoreLoading: false, // Loading more data
@@ -74,39 +77,21 @@ const Playlist = () => {
     }
   }, [playlistContext?.state?.errorMessage]);
 
-  useEffect(() => {
-    playlistContext?.checkIfLiked(playlist_id);
-  }, [isLiked]);
+  const fetchInitialData = async () => {
+    setLoadingState((prev) => ({ ...prev, isInitialLoading: true }));
+    const me = await authContext?.getCurrentUser();
+    setMe(me);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoadingState((prevState) => ({
-        ...prevState,
-        isInitialLoading: true,
-      }));
-
-      // const delay = new Promise((resolve) => setTimeout(resolve, 1300));
-
-      try {
-        const me = await authContext?.getCurrentUser();
-        setMe(me);
-
-        await playlistContext?.fetchPlaylist(
-          playlist_id ? playlist_id : playlist_id.toString()
-        );
-
-        // await Promise.all([delay]);
-      } finally {
-        setLoadingState((prevState) => ({
-          ...prevState,
-          isInitialLoading: false,
-        }));
-      }
-    };
-
-    if (playlist_id) {
-      fetchInitialData();
+    try {
+      await playlistContext?.fetchPlaylist(playlist_id);
+      playlistContext?.checkIfLiked(playlist_id);
+    } finally {
+      setLoadingState((prev) => ({ ...prev, isInitialLoading: false }));
     }
+  };
+
+  useEffect(() => {
+    fetchInitialData();
   }, [playlist_id]);
 
   //Listen for Callback URL
@@ -132,6 +117,15 @@ const Playlist = () => {
   const onLike = (props) => {
     playlistContext?.likePlaylist(props);
     setIsLiked(true);
+  };
+
+  const onUser = async () => {
+    router.push({
+      pathname: "/screens/user-profile",
+      params: {
+        userID: playlist.user,
+      },
+    });
   };
 
   useEffect(() => {
@@ -215,6 +209,28 @@ const Playlist = () => {
     }
   };
 
+  // Update playlist
+  const onUpdatePlaylist = async () => {
+    setLoadingState((prevState) => ({
+      ...prevState,
+      isDeleting: true,
+    }));
+
+    try {
+      await playlistContext?.updatePlaylist(playlist_id);
+    } catch (error) {
+      playlistContext?.dispatch({
+        type: "error_1",
+        payload: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        isDeleting: false,
+      }));
+    }
+  };
+
   //Show action sheet
   const showActionSheet = () => {
     actionSheet.current.show();
@@ -244,6 +260,8 @@ const Playlist = () => {
     if (index === 0) {
       showAlert();
     } else if (index === 1) {
+      onUpdatePlaylist();
+    } else if (index === 2) {
       null;
     }
   };
@@ -515,7 +533,9 @@ const Playlist = () => {
           </View>
         </Pressable>
         {playlist?.username ? (
-          <Text style={styles.username}>{"@" + playlist?.username}</Text>
+          <Pressable onPress={() => onUser()}>
+            <Text style={styles.username}>{"@" + playlist?.username}</Text>
+          </Pressable>
         ) : null}
         {JSON.stringify(playlist?.user) === me ? (
           <Pressable onPress={showActionSheet} style={styles.header}>
@@ -523,9 +543,8 @@ const Playlist = () => {
             <ActionSheet
               ref={actionSheet}
               options={optionArray}
-              cancelButtonIndex={1}
+              cancelButtonIndex={2}
               onPress={onActionSelect}
-              title={"Delete playlist"}
               destructiveButtonIndex={0}
             />
           </Pressable>

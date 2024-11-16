@@ -205,11 +205,12 @@ const login = (dispatch) => async (token) => {
 const signInWithPhone = (dispatch) => async (data) => {
   try {
     const confirm = await firebase.auth().signInWithPhoneNumber(data);
+    console.log(confirm);
     await dispatch({ type: "confirmation", payload: confirm });
   } catch (err) {
     dispatch({
       type: "error_1",
-      payload: "Something went wrong. Please try again.",
+      payload: "Something went wrong. Please try again." + err,
     });
   }
 };
@@ -238,17 +239,17 @@ const signout = (dispatch) => async () => {
       },
     });
     if (res.status === 200) {
-      SecureStore.deleteItemAsync("token");
       SecureStore.deleteItemAsync("user_id");
       SecureStore.deleteItemAsync("username");
       SecureStore.deleteItemAsync("user");
       SecureStore.deleteItemAsync("fcmToken");
+      SecureStore.deleteItemAsync("token");
       dispatch({
         type: "signout",
-        token: null,
         user_id: null,
         username: null,
         user: "false",
+        token: null,
       });
       dispatch({
         type: "confirmation",

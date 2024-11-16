@@ -47,6 +47,14 @@ class PlaylistDetails(APIView):
             playlist = Playlist.objects.get(id=playlist_id)
             playlist_serializer = PlaylistDetailSerializer(playlist)
 
+            # Check if the current user has liked the playlist
+            is_liked = Like.objects.filter(
+                user=request.user, playlist=playlist, like=True).exists()
+
+            # Serialize the playlist data
+            playlist_serializer = PlaylistDetailSerializer(
+                playlist, context={'is_liked': is_liked})
+
             # Get the tracks associated with the playlist
             tracks = PlaylistTracks.objects.filter(
                 playlist_id=playlist.id).order_by('id')
@@ -85,7 +93,6 @@ class PlaylistDetails(APIView):
             playlist_endpoint = "v1/playlists/"+spotify_playlistID
             response = execute_spotify_api_request(user, playlist_endpoint)
 
-            playlist.description = playlist.description
             playlist.playlist_url = response["external_urls"]["spotify"]
             playlist.playlist_ApiURL = response["href"]
             playlist.playlist_id = response["id"]
@@ -96,7 +103,7 @@ class PlaylistDetails(APIView):
             playlist.playlist_tracks = playlist.playlist_tracks
 
             playlist.save(update_fields=['user',
-                                         'description', 'playlist_url', 'playlist_ApiURL', 'playlist_id', 'playlist_cover',
+                                         'playlist_url', 'playlist_ApiURL', 'playlist_id', 'playlist_cover',
                                          'playlist_title', 'playlist_type', 'playlist_uri', 'playlist_tracks'])
 
             playlist_serializer = PlaylistDetailSerializer(playlist)

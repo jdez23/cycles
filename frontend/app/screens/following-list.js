@@ -21,7 +21,7 @@ const window = Dimensions.get("window").width;
 
 const FollowingList = () => {
   const params = useLocalSearchParams();
-  const { id } = params;
+  const { user_id, id } = params;
   const [toast, setToast] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -30,6 +30,8 @@ const FollowingList = () => {
   const playlistContext = useContext(PlaylistContext);
   const following = playlistContext?.state?.following?.results;
   const nextPage = playlistContext?.state?.following?.next;
+
+  // console.log(params);
 
   useEffect(() => {
     if (playlistContext?.state?.errorMessage) {
@@ -48,7 +50,7 @@ const FollowingList = () => {
 
   // Call to get list of followers
   useEffect(() => {
-    playlistContext?.getFollowing(id);
+    playlistContext?.getFollowing(user_id || id);
   }, [authContext?.state.token]);
 
   const wait = (timeout) => {
@@ -59,7 +61,7 @@ const FollowingList = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     setLoadingData(true);
-    playlistContext?.getFollowing(id);
+    playlistContext?.getFollowing(id || user_id);
     loadingData == true ? (
       <View
         style={{
@@ -79,11 +81,9 @@ const FollowingList = () => {
 
   //Navigate to user profile
   const onUser = async (item) => {
-    const currentUser = await SecureStore.getItemAsync("user_id");
     router.push({
-      pathname: "user-profile",
+      pathname: "./user-profile",
       params: {
-        me: currentUser,
         userID: item.following_user,
       },
     });

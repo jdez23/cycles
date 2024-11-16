@@ -108,16 +108,16 @@ const ProfileScreen = () => {
   };
 
   const onFollowers = () => {
-    router.navigate({
+    router.push({
       pathname: "/screens/followers-list",
-      params: { user_id: currentUser },
+      params: { user_id: id || userID },
     });
   };
 
-  const onFollowing = (item) => {
-    router.navigate({
+  const onFollowing = () => {
+    router.push({
       pathname: "/screens/following-list",
-      params: item,
+      params: { user_id: id || userID },
     });
   };
 
@@ -179,7 +179,7 @@ const ProfileScreen = () => {
               </View>
             </TouchableOpacity>
           )}
-          {currentUser == id || userID ? (
+          {currentUser === id || currentUser === userID ? (
             <TouchableOpacity onPress={() => onEditProfile()}>
               <View style={styles.editProfileButton}>
                 <Text style={styles.editProfileText}>Edit Profile</Text>

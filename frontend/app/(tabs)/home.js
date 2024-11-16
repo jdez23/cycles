@@ -29,6 +29,7 @@ const windowWidth = Dimensions.get("window").width;
 const FollowingFeed = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingData, setIsCheckingData] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const actionSheet = useRef();
   const playlistContext = useContext(PlaylistContext);
@@ -71,27 +72,40 @@ const FollowingFeed = () => {
 
   const onPlaylistDetail = async (item) => {
     const me = await SecureStore.getItemAsync("user_id");
-    router.navigate({
+    router.push({
       pathname: "/screens/playlist-screen",
-      params: { playlist_id: item.id, me },
+      params: { playlist_id: selectedItem?.id ?? item.id, me },
     });
+    setSelectedItem(null);
   };
 
   const onUserPic = async (item) => {
-    const me = await SecureStore.getItemAsync("user_id");
     router.push({
       pathname: "/screens/user-profile",
-      params: { userID: item.user, playlist_id: item.id, me },
+      params: {
+        userID: selectedItem.user,
+        playlist_id: selectedItem.id || item.id,
+      },
     });
+    setSelectedItem(null);
   };
 
-  const onActionSelect = (index, item) => {
+  const onActionSelect = (index) => {
     if (index === 0) {
-      onUserPic(item);
+      onUserPic(selectedItem);
     } else if (index === 1) {
-      onPlaylistDetail(item);
+      onPlaylistDetail(selectedItem);
+    } else if (index === 2) {
+      setSelectedItem(null); // Reset selectedItem when "Cancel" is selected
     }
   };
+
+  // Open ActionSheet only when selectedItem is set
+  useEffect(() => {
+    if (selectedItem) {
+      actionSheet.current.show();
+    }
+  }, [selectedItem]);
 
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
@@ -112,16 +126,34 @@ const FollowingFeed = () => {
         </View>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => actionSheet.current.show()}
+          onPress={() => {
+            setSelectedItem(item);
+          }}
         >
           <Ionicons name="ellipsis-horizontal" size={20} color="white" />
           <ActionSheet
             ref={actionSheet}
             options={["Go to profile", "Go to playlist", "Cancel"]}
-            onPress={(index) => onActionSelect(index, item)}
+            onPress={(index) => onActionSelect(index)}
             cancelButtonIndex={2}
           />
         </TouchableOpacity>
+
+        {/* <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            setSelectedItem(item);
+            actionSheet.current.show();
+          }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color="white" />
+          <ActionSheet
+            ref={actionSheet}
+            options={["Go to profile", "Go to playlist", "Cancel"]}
+            onPress={(index) => onActionSelect(index, selectedItem)}
+            cancelButtonIndex={2}
+          />
+        </TouchableOpacity> */}
       </View>
 
       {item?.playlist_cover && (
