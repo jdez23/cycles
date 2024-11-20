@@ -38,13 +38,14 @@ const CommentsScreen = () => {
   } = params;
   const authContext = useContext(AuthContext);
   const playlistContext = useContext(PlaylistContext);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [title, setTitle] = useState("");
   const [toast, setToast] = useState("");
   const window = Dimensions.get("window").width;
-  const comments = playlistContext?.state?.comments?.results;
+  const comments = playlistContext?.state?.comments;
   const nextPage = playlistContext?.state?.comments?.next;
 
   useEffect(() => {
@@ -64,9 +65,13 @@ const CommentsScreen = () => {
 
   // Call to get playlist' comments
   useEffect(() => {
-    authContext?.getCurrentUser();
-    playlistContext?.getComments(playlist_id);
-  }, [authContext?.state.token]);
+    const fetchData = async () => {
+      const user = await authContext?.getCurrentUser();
+      setCurrentUser(user);
+      await playlistContext?.getComments(playlist_id);
+    };
+    fetchData();
+  }, []);
 
   const onBack = () => {
     router.back();
@@ -157,9 +162,9 @@ const CommentsScreen = () => {
 
   // Render comments
   _renderItem = ({ item }) => (
+    // console.log(currentUser),
     <View>
-      {playlist_user_id == authContext?.state.user_id ||
-      item.user == authContext?.state.user_id ? (
+      {playlist_user_id == currentUser || item.user == currentUser ? (
         <Swipeable renderRightActions={() => rightSwipeActions(item)}>
           <View
             style={{

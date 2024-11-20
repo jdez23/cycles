@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Context as NotifContext } from "../../context/notif-context";
-// import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Toast from "react-native-root-toast";
 import moment from "moment";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -159,9 +158,9 @@ const NotificationsScreen = () => {
             {item.avi_pic ? (
               <Pressable
                 onPress={() =>
-                  navigation.navigate({
-                    name: "profile",
-                    params: { item },
+                  router.push({
+                    pathname: "screens/user-profile",
+                    params: { id: item.from_user },
                   })
                 }
               >

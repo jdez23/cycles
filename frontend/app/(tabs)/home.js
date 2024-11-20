@@ -81,10 +81,10 @@ const FollowingFeed = () => {
 
   const onUserPic = async (item) => {
     router.push({
-      pathname: "/screens/user-profile",
+      pathname: "screens/user-profile",
       params: {
-        userID: selectedItem.user,
-        playlist_id: selectedItem.id || item.id,
+        userID: selectedItem?.user || item.user,
+        playlist_id: selectedItem?.id || item.id,
       },
     });
     setSelectedItem(null);

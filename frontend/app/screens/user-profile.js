@@ -69,8 +69,8 @@ const ProfileScreen = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     playlistContext
-      ?.getPlaylistData(userID)
-      .then(() => playlistContext?.getProfileData(userID))
+      ?.getPlaylistData(userID || id)
+      .then(() => playlistContext?.getProfileData(userID || id))
       .then((res) => setIsFollowing(res))
       .finally(() => setIsRefreshing(false));
   };

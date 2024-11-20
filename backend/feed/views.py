@@ -134,6 +134,7 @@ class PlaylistDetails(APIView):
                 track["name"] = item["track"]["name"]
                 track["track_id"] = item["track"]["external_urls"]['spotify']
                 track["uri"] = item["track"]["uri"]
+                track["preview_url"] = item["track"]["preview_url"]
                 track["images"] = item["track"]["album"]["images"][2]['url']
 
                 # Add the current track to the list of tracks
@@ -143,7 +144,8 @@ class PlaylistDetails(APIView):
             for track in tracks:
                 playlist_track = PlaylistTracks.objects.create(
                     playlist=playlist, artist=track['artist'], album=track['album'],
-                    name=track['name'], track_id=track['track_id'], uri=track['uri'], images=track['images']
+                    name=track['name'], track_id=track['track_id'], uri=track['uri'],
+                    preview_url=track["preview_url"], images=track['images']
                 )
                 playlist_track.save()
                 PlaylistTracksSerializer(playlist_track)
@@ -277,7 +279,7 @@ class MyPlaylists(APIView):
             )
 
     def delete(self, request, format=None):
-        playlist_id = request.GET.get('id')
+        playlist_id = request.GET.get("id")
         try:
             Playlist.objects.get(id=playlist_id).delete()
 
@@ -394,7 +396,13 @@ class CommentView(APIView):
                 playlist=playlist).order_by('-date')
             serializer = CommentSerializer(comment, many=True)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Implement pagination
+            paginator = PageNumberPagination()
+            paginator.page_size = 10
+            result_page = paginator.paginate_queryset(
+                serializer.data, request)
+
+            return paginator.get_paginated_response(result_page)
         except:
             return JsonResponse({'error': 'An unexpected error occurred.'})
 

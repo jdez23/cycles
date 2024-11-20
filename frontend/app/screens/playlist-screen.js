@@ -472,10 +472,7 @@ const Playlist = () => {
   const playlistTracks = ({ item }) => {
     return (
       <View style={styles.trackContainer}>
-        <TouchableOpacity
-          onPress={() => playSound(item)}
-          style={styles.trackRow}
-        >
+        <Pressable onPress={() => playSound(item)} style={styles.trackRow}>
           <View style={styles.trackInfo}>
             <Image
               style={styles.trackAlbumCover}
@@ -513,7 +510,7 @@ const Playlist = () => {
               />
             </Pressable>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   };

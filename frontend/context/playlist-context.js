@@ -593,7 +593,6 @@ const comment = (dispatch) => async (props) => {
   const data = {
     to_user: props.to_user.toString(),
     title: "Cycles",
-    image: props.playlist_cover,
   };
   try {
     const response = await axios.post(
