@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignSelf: "center",
     paddingLeft: 10,
-    maxWidth: "70%", // Allows for truncation without pushing the Spotify icon
+    maxWidth: "65%", // Allows for truncation without pushing the Spotify icon
   },
   trackTitle: {
     color: "white",
