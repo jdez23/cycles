@@ -20,6 +20,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomColor: "#252525",
     borderBottomWidth: 0.3,
+    // justifyContent: "center",
   },
   cycles: {
     fontSize: window / 13,

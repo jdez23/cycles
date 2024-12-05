@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "136208057061",
     "project_id": "cycles-eca0e",
-    "storage_bucket": "cycles-eca0e.appspot.com"
+    "storage_bucket": "cycles-eca0e.firebasestorage.app"
   },
   "client": [
     {
@@ -13,6 +13,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "136208057061-5710ikrmevccs3er694l1ltsatf2iiev.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cycles.frontend",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
         {
           "client_id": "136208057061-4jdhuqgqib3n7mpsetvpjs6jjh6en40h.apps.googleusercontent.com",
           "client_type": 3

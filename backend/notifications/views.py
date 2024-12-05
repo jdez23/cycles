@@ -70,7 +70,6 @@ class NotificationView(APIView):
             if user.id != to_user.id:
 
                 if type == 'follow':
-                    print(follow)
                     follow = Follow.objects.get(id=follow)
                     notification = Notification(from_user=user, to_user=to_user, title=title,
                                                 image='', body=body, type=type, follow=follow)

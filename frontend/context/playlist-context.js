@@ -147,15 +147,6 @@ const playlistReducer = (state, action) => {
         ...state,
         comments: action.comments,
       };
-    case "POST_COMMENT": {
-      return { ...state, comments: [action.payload, ...state.comments] };
-    }
-    case "DELETE_COMMENT": {
-      const newComments = state.comments.filter(
-        (comment) => comment.id !== action.payload
-      );
-      return { ...state, comments: newComments };
-    }
     case "isLiked":
       return {
         ...state,
@@ -588,11 +579,12 @@ const getComments =
   };
 
 // Comment on playlist
-const comment = (dispatch) => async (props) => {
+const comment = () => async (props) => {
   const token = await SecureStore.getItemAsync("token", {});
   const data = {
     to_user: props.to_user.toString(),
     title: "Cycles",
+    image: props.playlist_cover,
   };
   try {
     const response = await axios.post(
@@ -615,20 +607,24 @@ const comment = (dispatch) => async (props) => {
     data["follow"] = null;
     data["like"] = null;
     if (response.status === 201) {
-      dispatch({ type: "POST_COMMENT", payload: response.data });
+      // Send notification
       try {
-        axios.post(`${BACKEND_URL}/notifications/message/`, data, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
+        axios
+          .post(`${BACKEND_URL}/notifications/message/`, data, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+          })
+          .then((res) => {
+            return res.status;
+          });
       } catch (error) {
-        null;
+        console.error("Notification Error:", error.response?.data || error);
       }
     }
-  } catch (err) {
-    null;
+  } catch (error) {
+    console.error("Comment Error:", error.response?.data || error);
   }
 };
 
@@ -643,8 +639,7 @@ const deleteComment = (dispatch) => async (id) => {
         },
       })
       .then((res) => {
-        value = res.data;
-        dispatch({ type: "DELETE_COMMENT", payload: id });
+        return res.status;
       });
   } catch (err) {
     null;

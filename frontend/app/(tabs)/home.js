@@ -12,6 +12,7 @@ import {
   Dimensions,
   Linking,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import ActionSheet from "react-native-actionsheet";
@@ -219,11 +220,16 @@ const FollowingFeed = () => {
           showsVerticalScrollIndicator={false}
         />
       ) : (
-        <View style={styles.noPlaylistsContainer}>
+        <ScrollView
+          contentContainerStyle={styles.noPlaylistsContainer}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
+        >
           <Text style={styles.noPlaylistsText}>
             Find playlists in the discover tab.
           </Text>
-        </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );

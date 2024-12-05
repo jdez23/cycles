@@ -372,9 +372,9 @@ class CommentView(APIView):
             comment = Comment.objects.create(
                 user=user, playlist=playlist, title=title)
             comment.save()
-            serializer = CommentSerializer(comment)
+            CommentSerializer(comment)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_201_CREATED)
         except:
             return JsonResponse(status=500)
 

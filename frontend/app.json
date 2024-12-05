@@ -11,7 +11,7 @@
       "backgroundColor": "#111111"
     },
     "ios": {
-      "buildNumber": "3" ,
+      "buildNumber": "4" ,
       "entitlements": {
         "aps-environment": "production"
       },
@@ -24,11 +24,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.cycles.frontend",
-      "googleServicesFile": "./google-services.json",
+      "googleServicesFile": "./android/app/google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"

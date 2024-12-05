@@ -324,8 +324,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "white",
-    textAlign: "left",
+    textAlign: "center",
     marginTop: 4,
+    width: windowWidth - 24,
   },
   followInfoContainer: {
     flexDirection: "row",

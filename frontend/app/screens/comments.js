@@ -45,7 +45,7 @@ const CommentsScreen = () => {
   const [title, setTitle] = useState("");
   const [toast, setToast] = useState("");
   const window = Dimensions.get("window").width;
-  const comments = playlistContext?.state?.comments;
+  const comments = playlistContext?.state?.comments?.results;
   const nextPage = playlistContext?.state?.comments?.next;
 
   useEffect(() => {
@@ -109,12 +109,13 @@ const CommentsScreen = () => {
 
   const onComment = async (title) => {
     setTitle("");
-    playlistContext?.comment({
+    await playlistContext?.comment({
       playlist_id: playlist_id,
       to_user: to_user,
       title: title,
+      playlist_cover: playlist_cover,
     });
-    playlistContext?.getComments(playlist_id);
+    await playlistContext?.getComments(playlist_id);
   };
 
   const onPlaylist = async () => {
@@ -124,9 +125,9 @@ const CommentsScreen = () => {
     });
   };
 
-  const onDelete = (item) => {
-    playlistContext?.deleteComment(item.id);
-    playlistContext?.getComments(playlist_id);
+  const onDelete = async (item) => {
+    await playlistContext?.deleteComment(item.id);
+    await playlistContext?.getComments(playlist_id);
   };
 
   //Navigate to user profile
