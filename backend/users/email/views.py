@@ -1,6 +1,9 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.core.mail import EmailMessage
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['POST'])
@@ -33,5 +36,5 @@ def send_contact_message(request):
         return Response({"message": "Message sent successfully!"}, status=200)
 
     except Exception as e:
-        print(e)
+        logger.exception("-------", e)
         return Response({"error": "Failed to send message. Try again later."}, status=500)
