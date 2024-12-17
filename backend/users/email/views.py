@@ -45,13 +45,20 @@ def send_contact_message(request):
 
 
 class ContactView(APIView):
-    queryset = ContactMessageSerializer.objects.all()
 
     def post(self, request):
+        # Initialize the serializer with request data
+        serializer = ContactMessageSerializer(data=request.data)
 
-        name = request.data.get('name')
-        email = request.data.get('email')
-        message = request.data.get('message')
+        # Validate the data
+        if not serializer.is_valid():
+            # Return validation errors
+            return Response(serializer.errors, status=400)
+
+        # Extract validated data
+        name = serializer.validated_data.get('name')
+        email = serializer.validated_data.get('email')
+        message = serializer.validated_data.get('message')
 
         try:
             # Create and send the email
