@@ -30,7 +30,7 @@ class Playlist(models.Model):
     playlist_cover = models.CharField(max_length=300, default='', blank=True)
     playlist_title = models.CharField(max_length=300, default='', blank=True)
     playlist_description = models.CharField(
-        max_length=3000, default='', blank=True)
+        max_length=3000, default='', blank=True, null=True)
     playlist_type = models.CharField(max_length=300, default='', blank=True)
     playlist_uri = models.CharField(max_length=300, default='', blank=True)
     playlist_tracks = models.CharField(
