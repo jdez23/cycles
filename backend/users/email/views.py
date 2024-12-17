@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.core.mail import EmailMessage
 from .serializers import ContactMessageSerializer
+from rest_framework.views import APIView
 import logging
 
 logger = logging.getLogger(__name__)
@@ -41,3 +42,33 @@ def send_contact_message(request):
     except Exception as e:
         logger.exception("Error sending contact message:", exc_info=e)
         return Response({"error": "Failed to send message. Try again later."}, status=500)
+
+
+class ContactView(APIView):
+    queryset = ContactMessageSerializer.objects.all()
+
+    def post(self, request):
+
+        name = request.data.get('name')
+        email = request.data.get('email')
+        message = request.data.get('message')
+
+        try:
+            # Create and send the email
+            subject = f"New Contact Form Message from {name}"
+            body = f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
+            to_email = 'cycles@cyclesstudios.com'
+
+            email_message = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=email,  # Use the user's email as sender
+                to=[to_email],
+            )
+            email_message.send()
+
+            return Response({"message": "Message sent successfully!"}, status=200)
+
+        except Exception as e:
+            logger.exception("Error sending contact message:", exc_info=e)
+            return Response({"error": "Failed to send message. Try again later."}, status=500)

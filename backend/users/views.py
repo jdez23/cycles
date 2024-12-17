@@ -198,7 +198,7 @@ class SubscriptionView(APIView):
 
     def post(self, request):
         email = request.data.get('email')
-        print(email)
+
         save_email = Subscription.objects.create(email=email)
         save_email.save()
 
