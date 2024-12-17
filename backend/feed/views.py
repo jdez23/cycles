@@ -139,7 +139,7 @@ class PlaylistDetails(APIView):
                 track["track_id"] = item["track"]["external_urls"]['spotify']
                 track["uri"] = item["track"]["uri"]
                 track["preview_url"] = item["track"]["preview_url"]
-                track["images"] = item["track"]["album"]["images"][2]['url']
+                track["images"] = item["track"]["album"]["images"][0]['url']
 
                 # Add the current track to the list of tracks
                 tracks.append(track)
@@ -486,3 +486,45 @@ class SearchView(generics.ListAPIView):
         combined_results = list(queryset_users) + list(queryset_playlists)
 
         return combined_results
+
+
+# Get playlist description from Spotify
+class GetDescription(APIView):
+    queryset = Playlist.objects.all()
+
+    def put(self, request):
+        try:
+            playlists = Playlist.objects.all()
+            user = self.request.user
+
+            for playlist in playlists:
+                id = playlist.playlist_id
+
+                # Update playlist
+                is_spotify_authenticated(user)
+                playlist_endpoint = "v1/playlists/"+id
+                response = execute_spotify_api_request(user, playlist_endpoint)
+
+                playlist.playlist_url = response["external_urls"]["spotify"]
+                playlist.playlist_description = response["description"]
+                playlist.playlist_ApiURL = response["href"]
+                playlist.playlist_id = response["id"]
+                playlist.playlist_cover = response["images"][0]["url"]
+                playlist.playlist_title = response["name"]
+                playlist.playlist_type = response["type"]
+                playlist.playlist_uri = response["uri"]
+                playlist.playlist_tracks = playlist.playlist_tracks
+
+                playlist.save(update_fields=['playlist_url', 'playlist_description', 'playlist_ApiURL', 'playlist_id', 'playlist_cover',
+                                             'playlist_title', 'playlist_type', 'playlist_uri', 'playlist_tracks'])
+
+                playlist_serializer = PlaylistDetailSerializer(playlist)
+
+                playlistDetails = {'playlistDetails': playlist_serializer.data}
+
+                print('---', playlist)
+
+            return Response(playlistDetails, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception('-----::', e)

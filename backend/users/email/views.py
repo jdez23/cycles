@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.core.mail import EmailMessage
+from .serializers import ContactMessageSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,13 +12,15 @@ def send_contact_message(request):
     """
     API endpoint to send a contact form message via email.
     """
-    name = request.data.get('name')
-    email = request.data.get('email')
-    message = request.data.get('message')
+    serializer = ContactMessageSerializer(data=request.data)
 
-    # Validate input
-    if not all([name, email, message]):
-        return Response({"error": "All fields are required."}, status=400)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+
+    # Extract validated data
+    name = serializer.validated_data['name']
+    email = serializer.validated_data['email']
+    message = serializer.validated_data['message']
 
     try:
         # Create and send the email
@@ -28,7 +31,7 @@ def send_contact_message(request):
         email_message = EmailMessage(
             subject=subject,
             body=body,
-            from_email=email,
+            from_email=email,  # Use the user's email as sender
             to=[to_email],
         )
         email_message.send()
@@ -36,5 +39,5 @@ def send_contact_message(request):
         return Response({"message": "Message sent successfully!"}, status=200)
 
     except Exception as e:
-        logger.exception("-------", e)
+        logger.exception("Error sending contact message:", exc_info=e)
         return Response({"error": "Failed to send message. Try again later."}, status=500)
