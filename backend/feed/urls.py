@@ -14,4 +14,6 @@ urlpatterns = [
     path('like-playlist/', LikesViewSet.as_view()),
     path('comments-playlist/', CommentView.as_view()),
     path('search/', SearchView.as_view(), name='search'),
+    path('playlists-by-hashtag/<str:hashtag_name>/',
+         PlaylistsByHashtag.as_view(), name='playlists-by-hashtag')
 ]

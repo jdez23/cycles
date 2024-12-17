@@ -22,5 +22,6 @@ urlpatterns = [
     path('user-following/', UsersFollowing.as_view()),
     path('user-followers/', UsersFollowers.as_view()),
     path('subscription/', authentication_classes([])
-         (permission_classes([AllowAny])(SubscriptionView)).as_view(), name='subscription')
+         (permission_classes([AllowAny])(SubscriptionView)).as_view(), name='subscription'),
+    path('email/', include('users.email.urls')),
 ]

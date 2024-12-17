@@ -1,10 +1,7 @@
-import os
-import environ
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from spotify_api.util import execute_spotify_api_request, is_spotify_authenticated
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
 from rest_framework import generics
 from .serializers import *
@@ -13,6 +10,7 @@ from django.http import JsonResponse
 from users.models import Follow
 from rest_framework.pagination import PageNumberPagination
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,16 +60,19 @@ class PlaylistDetails(APIView):
             # Implement pagination for the tracks queryset
             paginator = PageNumberPagination()
             paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
-
             paginated_tracks = paginator.paginate_queryset(tracks, request)
 
             # Serialize the paginated data
             tracks_serializer = PlaylistTracksSerializer(
                 paginated_tracks, many=True)
 
+            # Get the hashtags associated with the playlist
+            hashtags = playlist.hashtags.values_list('hash', flat=True)
+
             response_data = {
                 "playlist": playlist_serializer.data,
                 "tracks": tracks_serializer.data,
+                "hashtags": list(hashtags),
                 "count": paginator.page.paginator.count,
                 "next": paginator.get_next_link(),
                 "previous": paginator.get_previous_link(),
@@ -80,6 +81,8 @@ class PlaylistDetails(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         except Playlist.DoesNotExist:
             return JsonResponse({'error': 'Playlist not found.'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
     def put(self, request):
         try:
@@ -94,6 +97,7 @@ class PlaylistDetails(APIView):
             response = execute_spotify_api_request(user, playlist_endpoint)
 
             playlist.playlist_url = response["external_urls"]["spotify"]
+            playlist.playlist_description = response["description"]
             playlist.playlist_ApiURL = response["href"]
             playlist.playlist_id = response["id"]
             playlist.playlist_cover = response["images"][0]["url"]
@@ -103,7 +107,7 @@ class PlaylistDetails(APIView):
             playlist.playlist_tracks = playlist.playlist_tracks
 
             playlist.save(update_fields=['user',
-                                         'playlist_url', 'playlist_ApiURL', 'playlist_id', 'playlist_cover',
+                                         'playlist_url', 'playlist_description', 'playlist_ApiURL', 'playlist_id', 'playlist_cover',
                                          'playlist_title', 'playlist_type', 'playlist_uri', 'playlist_tracks'])
 
             playlist_serializer = PlaylistDetailSerializer(playlist)
@@ -183,6 +187,36 @@ class UserPlaylists(APIView):
             return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
 
+# FILTER PLAYLIST BY HASHTAG
+class PlaylistsByHashtag(APIView):
+    def get(self, request, hashtag_name):
+        try:
+            # Get the hashtag object
+            hashtag = Hashtag.objects.get(hash=hashtag_name)
+
+            # Get all playlists associated with the hashtag
+            playlists = hashtag.playlists.all()
+
+            # Serialize the playlists
+            serializer = UserPlaylistSerializer(playlists, many=True)
+
+            # Implement pagination
+            paginator = PageNumberPagination()
+            paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
+            result_page = paginator.paginate_queryset(
+                serializer.data, request)
+
+            return paginator.get_paginated_response(result_page)
+
+        except Hashtag.DoesNotExist:
+            return Response({"error": "Hashtag not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 # DELETE, GET & POST MY PLAYLISTS
 class MyPlaylists(APIView):
     queryset = Playlist.objects.all()
@@ -208,11 +242,14 @@ class MyPlaylists(APIView):
             form_data = request.data
 
             user = self.request.user
+            image = form_data.get('image')
+            hashtags_data = form_data.get('hashtags', [])
             playlist_url = form_data.get('playlist_url')
             playlist_ApiURL = form_data.get('playlist_ApiURL')
             playlist_id = form_data.get('playlist_id')
             playlist_cover = form_data.get('playlist_cover')
             playlist_title = form_data.get('playlist_title')
+            playlist_description = form_data.get('playlist_description')
             playlist_type = form_data.get('playlist_type')
             playlist_uri = form_data.get('playlist_uri')
             playlist_tracks = form_data.get('playlist_tracks')
@@ -254,11 +291,17 @@ class MyPlaylists(APIView):
 
             # Save playlist to database
             playlist = Playlist.objects.create(
-                user=user, playlist_url=playlist_url,
+                user=user, image=image, playlist_url=playlist_url,
                 playlist_ApiURL=playlist_ApiURL, playlist_id=playlist_id,
-                playlist_cover=playlist_cover, playlist_title=playlist_title,
+                playlist_cover=playlist_cover, playlist_title=playlist_title, playlist_description=playlist_description,
                 playlist_type=playlist_type, playlist_uri=playlist_uri, playlist_tracks=playlist_tracks)
             playlist.save()
+
+            # Add hashtags to the playlist
+            for hashtag_name in hashtags_data:
+                hashtag = Hashtag.objects.get_or_create(hash=hashtag_name)
+                playlist.hashtags.add(hashtag)
+
             PlaylistSerializer(playlist)
 
             # Save tracks in db
@@ -271,6 +314,7 @@ class MyPlaylists(APIView):
                 playlist_track.save()
                 PlaylistTracksSerializer(playlist_track)
             return Response(status=status.HTTP_201_CREATED)
+
         except Exception as e:
             logger.exception("Error saving playlist and tracks")
             return Response(
@@ -281,10 +325,24 @@ class MyPlaylists(APIView):
     def delete(self, request, format=None):
         playlist_id = request.GET.get("id")
         try:
-            Playlist.objects.get(id=playlist_id).delete()
+            # Retrieve the playlist to be deleted
+            playlist = Playlist.objects.get(id=playlist_id)
+
+            # Get the hashtags associated with this playlist
+            hashtags = playlist.hashtags.all()
+
+            # Delete the playlist
+            playlist.delete()
+
+            # Delete hashtags that are no longer associated with any playlist
+            for hashtag in hashtags:
+                if hashtag.playlists.count() == 0:  # Check if the hashtag is orphaned
+                    hashtag.delete()
 
             return Response(status=status.HTTP_200_OK)
-        except:
+        except Playlist.DoesNotExist:
+            return JsonResponse({'error': 'Playlist not found.'}, status=404)
+        except Exception as e:
             return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
 

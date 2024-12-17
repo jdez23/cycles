@@ -8,16 +8,29 @@ from users.models import User
 # Create your models here.
 
 
+class Hashtag(models.Model):
+    hash = models.CharField(max_length=50, default='', blank=True, unique=True)
+
+    def __str__(self):
+        return self.hash
+
+
 class Playlist(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, default=None
     )
+    image = models.ImageField(
+        upload_to='media/playlist/', default='', null=True, blank=True)
+    hashtags = models.ManyToManyField(
+        Hashtag, related_name="playlists", blank=True)
     playlist_url = models.CharField(max_length=300, default='', blank=True)
     playlist_ApiURL = models.CharField(
         max_length=300, default=None, blank=True)
     playlist_id = models.CharField(max_length=300, default='', blank=True)
     playlist_cover = models.CharField(max_length=300, default='', blank=True)
     playlist_title = models.CharField(max_length=300, default='', blank=True)
+    playlist_description = models.CharField(
+        max_length=3000, default='', blank=True)
     playlist_type = models.CharField(max_length=300, default='', blank=True)
     playlist_uri = models.CharField(max_length=300, default='', blank=True)
     playlist_tracks = models.CharField(

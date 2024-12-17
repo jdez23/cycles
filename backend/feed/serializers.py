@@ -30,6 +30,12 @@ class SearchPlaylistSerializer(serializers.ModelSerializer):
                   'playlist_cover', 'username', 'playlist_type')
 
 
+class HashtagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hashtag
+        fields = ['hash']
+
+
 class UserPlaylistSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
     avi_pic = serializers.SerializerMethodField('get_avi_pic')
@@ -52,6 +58,7 @@ class UserPlaylistSerializer(serializers.ModelSerializer):
 class PlaylistDetailSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
     isLiked = serializers.SerializerMethodField()
+    hashtags = HashtagSerializer(many=True)
 
     class Meta:
         model = Playlist
@@ -62,7 +69,6 @@ class PlaylistDetailSerializer(serializers.ModelSerializer):
         return username
 
     def get_isLiked(self, playlist):
-        # Retrieve `is_liked` from the context passed in the view
         return self.context.get('is_liked', False)
 
 
@@ -74,7 +80,6 @@ class PlaylistTracksSerializer(serializers.ModelSerializer):
 
 
 class FollowingPlaylistSerializer(serializers.ModelSerializer):
-
     username = serializers.SerializerMethodField('get_username_from_user')
     location = serializers.SerializerMethodField('get_location_from_user')
     avi_pic = serializers.SerializerMethodField('get_avi_pic')
