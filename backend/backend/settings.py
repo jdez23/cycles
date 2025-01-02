@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'storages',
 
     'rest_framework',
+    'taggit',
 
     'feed',
     'users',
@@ -74,7 +75,7 @@ REST_FRAMEWORK = {
     ],
     # Choose the pagination class
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 12
 }
 
 MIDDLEWARE = [
