@@ -19,8 +19,6 @@ class Playlist(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, default=None
     )
-    image = models.ImageField(
-        upload_to='media/playlist/', default='', null=True, blank=True)
     hashtags = models.ManyToManyField(
         Hashtag, related_name="playlists", blank=True)
     playlist_url = models.CharField(max_length=300, default='', blank=True)
