@@ -242,7 +242,8 @@ class MyPlaylists(APIView):
             form_data = request.data
 
             user = self.request.user
-            hashtags_data = form_data.get('hashtags', [])
+            # hashtags_data = form_data.get('hashtags', [])
+            hashtags_data = request.POST.getlist('hashtags')
             playlist_url = form_data.get('playlist_url')
             playlist_ApiURL = form_data.get('playlist_ApiURL')
             playlist_id = form_data.get('playlist_id')
