@@ -105,28 +105,39 @@ class SpotifyPlaylist(APIView):
     def get(self, request, format=None):
         try:
             user = self.request.user
-            endpoint = 'v1/me'
-            spotify_username = execute_spotify_api_request(user, endpoint)
+            id_endpoint = 'v1/me'
+            spotify_username = execute_spotify_api_request(user, id_endpoint)
             me = spotify_username['id']
             selected_playlists = Playlist.objects.filter(user=user)
-
-            # Extract the playlist IDs the user has already selected
             selected_playlist_ids = [
                 playlist.playlist_id for playlist in selected_playlists]
 
             endpoint = "v1/me/playlists"
-            params = {
-                'limit': 50
-            }
-            response = execute_spotify_playlist_request(user, endpoint, params)
+            params = {'limit': 50, 'offset': 0}
+            playlists = []
 
-            res = response['items']
+            # Fetch all playlists from Spotify
+            while True:
+                response = execute_spotify_playlist_request(
+                    user, endpoint, params)
+                if not response or 'items' not in response:
+                    logger.error(
+                        f"Spotify API returned an invalid response: {response}")
+                    break
 
-            my_playlists = [i for i in res if i['owner']['id'] == me]
+                playlists.extend(response['items'])
 
+                # Stop if there are no more pages
+                if len(response['items']) < params['limit']:
+                    break
+
+                # Increment the offset
+                params['offset'] += params['limit']
+
+            # Filter playlists
+            my_playlists = [
+                i for i in playlists if i['owner']['id'] == me]
             public_playlists = [i for i in my_playlists if i['public'] == True]
-
-            # Return playlists that haven't been selected
             unselected_playlists = [
                 playlist for playlist in public_playlists if playlist['id'] not in selected_playlist_ids]
 

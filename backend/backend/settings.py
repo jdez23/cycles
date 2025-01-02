@@ -36,6 +36,7 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://localhost:3000",
+    "http://127.0.0.1:8000",
     "http://cycles-app-11ce5033b5eb.herokuapp.com",
     "https://cycles-app-11ce5033b5eb.herokuapp.com",
     "https://cyclesstudios.com",
