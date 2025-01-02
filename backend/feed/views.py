@@ -242,7 +242,6 @@ class MyPlaylists(APIView):
             form_data = request.data
 
             user = self.request.user
-            image = form_data.get('image')
             hashtags_data = form_data.get('hashtags', [])
             playlist_url = form_data.get('playlist_url')
             playlist_ApiURL = form_data.get('playlist_ApiURL')
@@ -291,7 +290,7 @@ class MyPlaylists(APIView):
 
             # Save playlist to database
             playlist = Playlist.objects.create(
-                user=user, image=image, playlist_url=playlist_url,
+                user=user, playlist_url=playlist_url,
                 playlist_ApiURL=playlist_ApiURL, playlist_id=playlist_id,
                 playlist_cover=playlist_cover, playlist_title=playlist_title, playlist_description=playlist_description,
                 playlist_type=playlist_type, playlist_uri=playlist_uri, playlist_tracks=playlist_tracks)
