@@ -38,14 +38,14 @@ class CreateUser(APIView):
         username = request.data.get('username')
 
         try:
+            # Validate username for invalid characters
+            allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
+            if any(char not in allowed_characters for char in username):
+                return Response({'error': 'Invalid characters in username.'}, status=status.HTTP_400_BAD_REQUEST)
+
             # Check if username already exists in the user database
             if User.objects.filter(username=username).exists():
                 return Response({'error': 'Username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
-
-            if any(char not in allowed_characters for char in username):
-                return Response({'error': 'Invalid characters in username.'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Create and save the new user
             user = User.objects.create(
@@ -97,7 +97,7 @@ class UserViewSet(viewsets.ModelViewSet):
             _user.username = request.data.get('username', _user.username)
             _user.bio = request.data.get('bio', _user.bio)
             _user.spotify_url = request.data.get(
-                'spotify_url', _user.spotify_url)
+                'spotify_url', _user.spotify_url or None)
 
             # Only update the avi_pic if a new one is uploaded
             if avi_pic:

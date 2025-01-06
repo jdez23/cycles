@@ -2,25 +2,18 @@ import os
 from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from taggit.managers import TaggableManager
 
 from users.models import User
 
 # Create your models here.
 
 
-class Hashtag(models.Model):
-    hash = models.CharField(max_length=50, default='', blank=True, unique=True)
-
-    def __str__(self):
-        return self.hash
-
-
 class Playlist(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, default=None
     )
-    hashtags = models.ManyToManyField(
-        Hashtag, related_name="playlists", blank=True)
+    hashtags = TaggableManager(blank=True)
     playlist_url = models.CharField(max_length=300, default='', blank=True)
     playlist_ApiURL = models.CharField(
         max_length=300, default=None, blank=True)
@@ -34,6 +27,9 @@ class Playlist(models.Model):
     playlist_tracks = models.CharField(
         max_length=300, default=None, blank=True)
     date = models.DateTimeField(editable=False, auto_now_add=True)
+
+    def __str__(self):
+        return self.playlist_title
 
 
 class PlaylistTracks(models.Model):

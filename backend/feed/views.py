@@ -22,13 +22,22 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     serializer_class = UserPlaylistSerializer
     pagination_class = None
 
-    def get_queryset(self):
-        try:
-            playlist = Playlist.objects.all().order_by('?')
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        has_uploaded = Playlist.objects.filter(user=user).exists()
 
-            return playlist
-        except:
-            return Response(status=500)
+        if has_uploaded:
+            # Return all playlists if user has uploaded a playlist
+            playlists = Playlist.objects.all().order_by('?')
+        else:
+            # Return only 4 playlists if the user hasn't uploaded a playlist
+            playlists = Playlist.objects.all()[:4]
+
+        serializer = self.serializer_class(playlists, many=True)
+        return Response({
+            "has_uploaded": has_uploaded,
+            "playlists": serializer.data
+        })
 
 
 # GET PLAYLIST DETAILS /UPDATE PLAYLIST
@@ -174,47 +183,19 @@ class UserPlaylists(APIView):
         try:
             user = request.GET.get('id')
             playlist = Playlist.objects.filter(user_id=user).order_by('-date')
-            serializer = UserPlaylistSerializer(playlist, many=True)
 
             # Implement pagination
             paginator = PageNumberPagination()
-            paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
-            result_page = paginator.paginate_queryset(
-                serializer.data, request)
+            paginator.page_size = 10
 
-            return paginator.get_paginated_response(result_page)
+            result_page = paginator.paginate_queryset(
+                playlist, request)
+
+            serializer = UserPlaylistSerializer(result_page, many=True)
+
+            return paginator.get_paginated_response(serializer.data)
         except:
             return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
-
-
-# FILTER PLAYLIST BY HASHTAG
-class PlaylistsByHashtag(APIView):
-    def get(self, request, hashtag_name):
-        try:
-            # Get the hashtag object
-            hashtag = Hashtag.objects.get(hash=hashtag_name)
-
-            # Get all playlists associated with the hashtag
-            playlists = hashtag.playlists.all()
-
-            # Serialize the playlists
-            serializer = UserPlaylistSerializer(playlists, many=True)
-
-            # Implement pagination
-            paginator = PageNumberPagination()
-            paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
-            result_page = paginator.paginate_queryset(
-                serializer.data, request)
-
-            return paginator.get_paginated_response(result_page)
-
-        except Hashtag.DoesNotExist:
-            return Response({"error": "Hashtag not found."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response(
-                {"error": f"An unexpected error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
 
 
 # DELETE, GET & POST MY PLAYLISTS
@@ -238,89 +219,137 @@ class MyPlaylists(APIView):
             return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
     def post(self, request):
-        try:
-            form_data = request.data
+        serializer = PlaylistSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                data = serializer.validated_data
 
-            user = self.request.user
-            # hashtags_data = form_data.get('hashtags', [])
-            hashtags_data = request.POST.getlist('hashtags')
-            playlist_url = form_data.get('playlist_url')
-            playlist_ApiURL = form_data.get('playlist_ApiURL')
-            playlist_id = form_data.get('playlist_id')
-            playlist_cover = form_data.get('playlist_cover')
-            playlist_title = form_data.get('playlist_title')
-            playlist_description = form_data.get('playlist_description')
-            playlist_type = form_data.get('playlist_type')
-            playlist_uri = form_data.get('playlist_uri')
-            playlist_tracks = form_data.get('playlist_tracks')
-
-            # Get Spotify playlist tracks
-            endpoint = 'v1/playlists/'+playlist_id+"/tracks"
-            response = execute_spotify_api_request(user, endpoint)
-
-            # Check if tracks are successfully retrieved
-            if not response or "items" not in response:
-                return Response(
-                    {'error': 'Failed to retrieve playlist tracks from the Spotify API.'},
-                    status=status.HTTP_502_BAD_GATEWAY
+                # Create playlist
+                playlist = Playlist.objects.create(
+                    user=request.user,
+                    playlist_url=data["playlist_url"],
+                    playlist_ApiURL=data.get("playlist_ApiURL"),
+                    playlist_id=data["playlist_id"],
+                    playlist_cover=data.get("playlist_cover"),
+                    playlist_title=data["playlist_title"],
+                    playlist_description=data.get("playlist_description"),
+                    playlist_type=data.get("playlist_type"),
+                    playlist_uri=data.get("playlist_uri"),
+                    playlist_tracks=data.get('playlist_tracks')
                 )
 
-            # # Initialize an empty list for the tracks
-            tracks = []
+                # Add hashtags (tags)
+                playlist.hashtags.set(data["hashtags"])
 
-            # Loop through the items in the playlist
-            for item in response["items"]:
-                # Check if the track and its album images exist
-                if item["track"] and item["track"]["album"]["images"]:
-                    # Initialize an empty dictionary for the current track
-                    track = {}
+                # Get Spotify playlist tracks
+                endpoint = f'v1/playlists/{data["playlist_id"]}/tracks'
+                response = execute_spotify_api_request(request.user, endpoint)
+                if not response or "items" not in response:
+                    return Response({'error': 'Failed to retrieve Spotify tracks.'}, status=status.HTTP_502_BAD_GATEWAY)
 
-                    # Extract data from Spotify API playlist
-                    track["artist"] = item["track"]["artists"][0]["name"]
-                    track["album"] = item["track"]["album"]["name"]
-                    track["name"] = item["track"]["name"]
-                    track["track_id"] = item["track"]["external_urls"]["spotify"]
-                    track["uri"] = item["track"]["uri"]
-                    track["preview_url"] = item["track"]["preview_url"]
+                # Save tracks
+                tracks = [
+                    PlaylistTracks(
+                        playlist=playlist,
+                        artist=item["track"]["artists"][0]["name"],
+                        album=item["track"]["album"]["name"],
+                        name=item["track"]["name"],
+                        track_id=item["track"]["external_urls"]["spotify"],
+                        uri=item["track"]["uri"],
+                        preview_url=item["track"]["preview_url"],
+                        images=item["track"]["album"]["images"][0]["url"],
+                    )
+                    for item in response["items"]
+                    if item["track"] and item["track"]["album"]["images"]
+                ]
+                PlaylistTracks.objects.bulk_create(tracks)
 
-                    # Get the largest album image
-                    track["images"] = item["track"]["album"]["images"][0]["url"]
+                return Response({'success': 'Playlist and tracks added successfully.'}, status=status.HTTP_201_CREATED)
 
-                    # Add the current track to the list of tracks
-                    tracks.append(track)
+            except Exception as e:
+                logger.exception("Error saving playlist and tracks" + e)
+                return Response({'error': 'Failed to save playlist.' + e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Save playlist to database
-            playlist = Playlist.objects.create(
-                user=user, playlist_url=playlist_url,
-                playlist_ApiURL=playlist_ApiURL, playlist_id=playlist_id,
-                playlist_cover=playlist_cover, playlist_title=playlist_title, playlist_description=playlist_description,
-                playlist_type=playlist_type, playlist_uri=playlist_uri, playlist_tracks=playlist_tracks)
-            playlist.save()
+        # try:
+        #     form_data = request.data
 
-            # Add hashtags to the playlist
-            for hashtag_name in hashtags_data:
-                hashtag = Hashtag.objects.get_or_create(hash=hashtag_name)
-                playlist.hashtags.add(hashtag)
+        #     user = self.request.user
+        #     hashtags_data = form_data.get('hashtags')
+        #     playlist_url = form_data.get('playlist_url')
+        #     playlist_ApiURL = form_data.get('playlist_ApiURL')
+        #     playlist_id = form_data.get('playlist_id')
+        #     playlist_cover = form_data.get('playlist_cover')
+        #     playlist_title = form_data.get('playlist_title')
+        #     playlist_description = form_data.get('playlist_description')
+        #     playlist_type = form_data.get('playlist_type')
+        #     playlist_uri = form_data.get('playlist_uri')
+        #     playlist_tracks = form_data.get('playlist_tracks')
 
-            PlaylistSerializer(playlist)
+        #     print(hashtags_data)
 
-            # Save tracks in db
-            for track in tracks:
-                playlist_track = PlaylistTracks.objects.create(
-                    playlist=playlist, artist=track['artist'], album=track['album'],
-                    name=track['name'], track_id=track['track_id'], uri=track['uri'],
-                    preview_url=track["preview_url"], images=track['images']
-                )
-                playlist_track.save()
-                PlaylistTracksSerializer(playlist_track)
-            return Response(status=status.HTTP_201_CREATED)
+        #     # Get Spotify playlist tracks
+        #     endpoint = 'v1/playlists/'+playlist_id+"/tracks"
+        #     response = execute_spotify_api_request(user, endpoint)
 
-        except Exception as e:
-            logger.exception("Error saving playlist and tracks")
-            return Response(
-                {'error': 'An error occurred while saving to the database.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        #     # Check if tracks are successfully retrieved
+        #     if not response or "items" not in response:
+        #         return Response(
+        #             {'error': 'Failed to retrieve playlist tracks from the Spotify API.'},
+        #             status=status.HTTP_502_BAD_GATEWAY
+        #         )
+
+        #     # # Initialize an empty list for the tracks
+        #     tracks = []
+
+        #     # Loop through the items in the playlist
+        #     for item in response["items"]:
+        #         # Check if the track and its album images exist
+        #         if item["track"] and item["track"]["album"]["images"]:
+        #             # Initialize an empty dictionary for the current track
+        #             track = {}
+
+        #             # Extract data from Spotify API playlist
+        #             track["artist"] = item["track"]["artists"][0]["name"]
+        #             track["album"] = item["track"]["album"]["name"]
+        #             track["name"] = item["track"]["name"]
+        #             track["track_id"] = item["track"]["external_urls"]["spotify"]
+        #             track["uri"] = item["track"]["uri"]
+        #             track["preview_url"] = item["track"]["preview_url"]
+
+        #             # Get the largest album image
+        #             track["images"] = item["track"]["album"]["images"][0]["url"]
+
+        #             # Add the current track to the list of tracks
+        #             tracks.append(track)
+
+        #     # Save playlist to database
+        #     playlist = Playlist.objects.create(
+        #         user=user, playlist_url=playlist_url,
+        #         playlist_ApiURL=playlist_ApiURL, playlist_id=playlist_id,
+        #         playlist_cover=playlist_cover, playlist_title=playlist_title, playlist_description=playlist_description,
+        #         playlist_type=playlist_type, playlist_uri=playlist_uri, playlist_tracks=playlist_tracks)
+        #     playlist.save()
+        #     PlaylistSerializer(playlist)
+
+        #     # Save tracks in db
+        #     for track in tracks:
+        #         playlist_track = PlaylistTracks.objects.create(
+        #             playlist=playlist, artist=track['artist'], album=track['album'],
+        #             name=track['name'], track_id=track['track_id'], uri=track['uri'],
+        #             preview_url=track["preview_url"], images=track['images']
+        #         )
+        #         playlist_track.save()
+        #         PlaylistTracksSerializer(playlist_track)
+        #     return Response(status=status.HTTP_201_CREATED)
+
+        # except Exception as e:
+        #     logger.exception("Error saving playlist and tracks")
+        #     return Response(
+        #         {'error': 'An error occurred while saving to the database.'},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        #     )
 
     def delete(self, request, format=None):
         playlist_id = request.GET.get("id")

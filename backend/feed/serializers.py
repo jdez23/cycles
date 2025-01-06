@@ -3,6 +3,7 @@ from .models import *
 from django.db.models import Q
 from users.serializers import SearchUserSerializer
 from rest_framework import serializers
+from taggit.serializers import (TagListSerializerField, TaggitSerializer)
 
 
 class CombinedSearchSerializer(serializers.Serializer):
@@ -30,12 +31,6 @@ class SearchPlaylistSerializer(serializers.ModelSerializer):
                   'playlist_cover', 'username', 'playlist_type')
 
 
-class HashtagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Hashtag
-        fields = ['hash']
-
-
 class UserPlaylistSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
     avi_pic = serializers.SerializerMethodField('get_avi_pic')
@@ -55,10 +50,10 @@ class UserPlaylistSerializer(serializers.ModelSerializer):
         return None
 
 
-class PlaylistDetailSerializer(serializers.ModelSerializer):
+class PlaylistDetailSerializer(TaggitSerializer, serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
     isLiked = serializers.SerializerMethodField()
-    hashtags = HashtagSerializer(many=True)
+    hashtags = TagListSerializerField()
 
     class Meta:
         model = Playlist
@@ -104,7 +99,9 @@ class FollowingPlaylistSerializer(serializers.ModelSerializer):
         return None
 
 
-class PlaylistSerializer(serializers.ModelSerializer):
+class PlaylistSerializer(TaggitSerializer, serializers.ModelSerializer):
+    hashtags = TagListSerializerField()
+
     class Meta:
         model = Playlist
         fields = "__all__"

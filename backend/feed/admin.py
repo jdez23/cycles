@@ -6,6 +6,5 @@ from .models import *
 admin.site.register(Like)
 admin.site.register(Comment)
 admin.site.register(Reply)
-admin.site.register(Hashtag)
 admin.site.register(Playlist)
 admin.site.register(PlaylistTracks)
