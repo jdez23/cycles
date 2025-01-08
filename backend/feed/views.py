@@ -31,7 +31,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             playlists = Playlist.objects.all().order_by('?')
         else:
             # Return only 4 playlists if the user hasn't uploaded a playlist
-            playlists = Playlist.objects.all()[:4]
+            playlists = Playlist.objects.all()[:6]
 
         serializer = self.serializer_class(playlists, many=True)
         return Response({
