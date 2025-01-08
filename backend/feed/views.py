@@ -220,6 +220,8 @@ class MyPlaylists(APIView):
             try:
                 data = serializer.validated_data
 
+                print(data)
+
                 # Create playlist
                 playlist = Playlist.objects.create(
                     user=request.user,
@@ -263,8 +265,9 @@ class MyPlaylists(APIView):
                 return Response({'success': 'Playlist and tracks added successfully.'}, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                logger.exception("Error saving playlist and tracks" + e)
-                return Response({'error': 'Failed to save playlist.' + e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logger.exception("Error saving playlist and tracks", e)
+                return Response({'error': f'Failed to save playlist. {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
