@@ -52,7 +52,7 @@ class PlaylistDetails(APIView):
 
             # Get the playlist object
             playlist = Playlist.objects.get(id=playlist_id)
-            playlist_serializer = PlaylistDetailSerializer(playlist)
+            # playlist_serializer = PlaylistDetailSerializer(playlist)
 
             # Check if the current user has liked the playlist
             is_liked = Like.objects.filter(
@@ -75,13 +75,9 @@ class PlaylistDetails(APIView):
             tracks_serializer = PlaylistTracksSerializer(
                 paginated_tracks, many=True)
 
-            # Get the hashtags associated with the playlist
-            hashtags = playlist.hashtags.values_list('hash', flat=True)
-
             response_data = {
                 "playlist": playlist_serializer.data,
                 "tracks": tracks_serializer.data,
-                "hashtags": list(hashtags),
                 "count": paginator.page.paginator.count,
                 "next": paginator.get_next_link(),
                 "previous": paginator.get_previous_link(),
@@ -91,7 +87,7 @@ class PlaylistDetails(APIView):
         except Playlist.DoesNotExist:
             return JsonResponse({'error': 'Playlist not found.'}, status=404)
         except Exception as e:
-            return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
+            return JsonResponse({'error': 'An unexpected error occurred.' + e}, status=500)
 
     def put(self, request):
         try:
