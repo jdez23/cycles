@@ -316,7 +316,7 @@ class FollowingPlaylists(generics.ListAPIView):
 # Get playlists by hashtag
 class PlaylistsByHashtagView(APIView):
     def get(self, request):
-        hashtag = request.data.get('hashtag')
+        hashtag = request.GET.get('hashtag', '').strip()
         try:
             # Filter playlists with the specific hashtag
             playlists = Playlist.objects.filter(
