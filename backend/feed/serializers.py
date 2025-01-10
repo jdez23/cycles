@@ -107,6 +107,31 @@ class PlaylistSerializer(TaggitSerializer, serializers.ModelSerializer):
         fields = "__all__"
 
 
+class UserMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'avi_pic']
+
+
+class PlaylistbyHashtagSerializer(serializers.ModelSerializer):
+    user = UserMinimalSerializer()
+
+    class Meta:
+        model = Playlist
+        fields = ['id', 'playlist_cover', 'playlist_id',
+                  'playlist_title', 'playlist_type', 'user']
+
+        def get_username_from_user(self, playlist):
+            username = playlist.user.username
+            return username
+
+        def get_avi_pic(self, playlist):
+            avi_pic = playlist.user.avi_pic
+            if avi_pic:
+                return avi_pic.url
+            return None
+
+
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField('get_username_from_user')
     avi_pic = serializers.SerializerMethodField('get_avi_pic')
