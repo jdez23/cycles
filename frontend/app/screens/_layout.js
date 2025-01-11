@@ -29,6 +29,12 @@ const ScreensLayout = () => {
         }}
       />
       <Stack.Screen
+        name="hashtag-playlists"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="playlist-screen"
         options={{
           headerShown: false,

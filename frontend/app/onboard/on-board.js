@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect, useRef } from "react";
 import {
   View,
   Text,
+  Alert,
   StyleSheet,
   TextInput,
   SafeAreaView,
@@ -38,7 +39,21 @@ const OnBoard = () => {
     usernameInput.current.focus();
   }, []);
 
+  const validateUsername = (username) => {
+    const allowedCharacters = /^[a-zA-Z0-9_.-]+$/;
+    return allowedCharacters.test(username);
+  };
+
   const completeProfile = () => {
+    if (!validateUsername(user_name)) {
+      Alert.alert(
+        "Invalid Username",
+        "Usernames can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)"
+      );
+      return;
+    }
+
+    // Call the backend function if the username is valid
     authContext?.completeSignUp(token, user_name);
   };
 

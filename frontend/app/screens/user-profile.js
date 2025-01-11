@@ -124,7 +124,7 @@ const ProfileScreen = () => {
   const loadMore = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getPlaylistData(userID || id, nextPage);
+      await playlistContext?.getPlaylistData(userID, nextPage);
       setLoading(false);
     }
   };
@@ -167,32 +167,42 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.actionButtonsContainer}>
-          {!profileData?.spotify_url || "null" ? null : (
+          {!profileData?.spotify_url ? null : (
             <TouchableOpacity
-              onPress={() => Linking.openURL(profileData?.spotify_url)}
+              onPress={() =>
+                Linking.openURL(
+                  !profileData?.spotify_url ? null : profileData?.spotify_url
+                )
+              }
             >
               <View style={styles.spotifyButton}>
                 <Image
-                  style={{ width: 15, height: 15 }}
+                  style={{ width: 20, height: 20 }}
                   source={Spotify_Icon_RGB_Green}
                 />
               </View>
             </TouchableOpacity>
           )}
           {currentUser === id || currentUser === userID ? (
-            <TouchableOpacity onPress={() => onEditProfile()}>
+            <TouchableOpacity
+              onPress={() => onEditProfile()}
+              style={{ paddingLeft: 4 }}
+            >
               <View style={styles.editProfileButton}>
                 <Text style={styles.editProfileText}>Edit Profile</Text>
               </View>
             </TouchableOpacity>
           ) : isFollowing ? (
-            <TouchableOpacity onPress={onUnfollowUser}>
+            <TouchableOpacity
+              onPress={onUnfollowUser}
+              style={{ paddingLeft: 4 }}
+            >
               <View style={styles.unfollowButton}>
                 <Text style={styles.unfollowText}>Unfollow</Text>
               </View>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={onFollowUser}>
+            <TouchableOpacity onPress={onFollowUser} style={{ paddingLeft: 4 }}>
               <View style={styles.followButton}>
                 <Text style={styles.followText}>Follow</Text>
               </View>
@@ -355,10 +365,10 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   spotifyButton: {
-    height: 25,
-    width: 25,
+    height: 35,
+    width: 35,
     borderRadius: 30,
-    backgroundColor: "#111111",
+    backgroundColor: "#181818",
     alignItems: "center",
     justifyContent: "center",
   },

@@ -55,7 +55,8 @@ const SpotifyPlaylist = () => {
   //Navigate back to previous screen
   const onBack = () => {
     playlistContext?.clearSelectedPlaylist();
-    router.push("(tabs)/new_playlist");
+    // router.push("(tabs)/new_playlist");
+    router.back();
   };
 
   //Navigate back to previous screen

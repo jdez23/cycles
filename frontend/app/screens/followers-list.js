@@ -8,8 +8,8 @@ import {
   SafeAreaView,
   Pressable,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
-import * as SecureStore from "expo-secure-store";
 import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -84,7 +84,7 @@ const FollowersList = () => {
   const loadMore = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getFollowers(to_user, nextPage);
+      await playlistContext?.getFollowers(user_id || id, nextPage);
       setLoading(false);
     }
   };
@@ -174,9 +174,8 @@ const FollowersList = () => {
           renderItem={_renderItem}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
-          initialNumToRender={10}
           onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={0.3}
           ListFooterComponent={
             loading ? (
               <View style={styles.loadingContainer}>

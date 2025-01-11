@@ -29,6 +29,18 @@ const notifReducer = (state, action) => {
         notifCount: action.notifCount,
       };
     case "NOTIFICATIONS":
+      if (action.append) {
+        return {
+          ...state,
+          notifications: {
+            ...action.notifications,
+            results: [
+              ...(state.notifications?.results || []),
+              ...action.notifications.results,
+            ],
+          },
+        };
+      }
       return {
         ...state,
         notifications: action.notifications,
@@ -58,30 +70,34 @@ const notifBadge = (dispatch) => () => {
 };
 
 //Fetch current users notifications.
-const getNotifications = (dispatch) => async () => {
-  const token = await SecureStore.getItemAsync("token");
-  try {
-    await axios
-      .get(`${BACKEND_URL}/notifications/message/`, {
+const getNotifications =
+  (dispatch) =>
+  async (nextPage = null) => {
+    const token = await SecureStore.getItemAsync("token");
+    try {
+      const url = nextPage || `${BACKEND_URL}/notifications/message/`;
+      const res = await axios.get(url, {
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
         },
-      })
-      .then((res) => {
-        const notifications = res.data;
-        dispatch({
-          type: "NOTIFICATIONS",
-          notifications: notifications,
-        });
       });
-  } catch (err) {
-    dispatch({
-      type: "error_1",
-      payload: "Something went wrong. Please try again.",
-    });
-  }
-};
+
+      const notifications = res.data;
+
+      // Dispatch action to handle notifications
+      dispatch({
+        type: "NOTIFICATIONS",
+        notifications: notifications,
+        append: !!nextPage,
+      });
+    } catch (err) {
+      dispatch({
+        type: "error_1",
+        payload: "Something went wrong. Please try again.",
+      });
+    }
+  };
 
 const deleteNotification = (dispatch) => async (id) => {
   const token = await SecureStore.getItemAsync("token");

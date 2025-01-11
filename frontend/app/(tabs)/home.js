@@ -139,24 +139,7 @@ const FollowingFeed = () => {
             cancelButtonIndex={2}
           />
         </TouchableOpacity>
-
-        {/* <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => {
-            setSelectedItem(item);
-            actionSheet.current.show();
-          }}
-        >
-          <Ionicons name="ellipsis-horizontal" size={20} color="white" />
-          <ActionSheet
-            ref={actionSheet}
-            options={["Go to profile", "Go to playlist", "Cancel"]}
-            onPress={(index) => onActionSelect(index, selectedItem)}
-            cancelButtonIndex={2}
-          />
-        </TouchableOpacity> */}
       </View>
-
       {item?.playlist_cover && (
         <Pressable
           onPress={() => onPlaylistDetail(item)}
@@ -227,7 +210,7 @@ const FollowingFeed = () => {
           }
         >
           <Text style={styles.noPlaylistsText}>
-            Find playlists in the discover tab.
+            Follow curators in the Discover tab to see their playlists here!
           </Text>
         </ScrollView>
       )}
@@ -324,8 +307,8 @@ const styles = StyleSheet.create({
     color: "lightgrey",
     fontSize: 12,
     alignSelf: "flex-start",
-    marginTop: 6,
-    marginLeft: 18,
+    marginTop: 8,
+    marginLeft: 12,
   },
   loadingIndicator: {
     marginVertical: 20,

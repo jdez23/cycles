@@ -52,7 +52,10 @@ const playlistReducer = (state, action) => {
           ...state,
           userPlaylistData: {
             ...action.userPlaylistData,
-            results: [...state.userPlaylistData, ...action.userPlaylistData],
+            results: [
+              ...(state.userPlaylistData?.results || []),
+              ...(action.userPlaylistData?.results || []),
+            ],
           },
         };
       }
@@ -87,17 +90,21 @@ const playlistReducer = (state, action) => {
         return {
           ...state,
           allPlaylists: {
-            ...action.allPlaylists,
+            ...state.allPlaylists,
+            ...state.has_uploaded,
             results: [
               ...state.allPlaylists.results,
               ...action.allPlaylists.results,
             ],
           },
+          has_uploaded: action.has_uploaded, // Update has_uploaded even in append mode
         };
       }
+      // Reset state when not appending
       return {
         ...state,
         allPlaylists: action.allPlaylists,
+        has_uploaded: action.has_uploaded,
       };
     case "followingPlaylists":
       if (action.append) {
@@ -115,6 +122,23 @@ const playlistReducer = (state, action) => {
       return {
         ...state,
         followingPlaylists: action.followingPlaylists,
+      };
+    case "hashtagPlaylists":
+      if (action.append) {
+        return {
+          ...state,
+          hashtagPlaylists: {
+            ...action.hashtagPlaylists,
+            results: [
+              ...(state.hashtagPlaylists?.results || []),
+              ...(action.hashtagPlaylists?.results || []),
+            ],
+          },
+        };
+      }
+      return {
+        ...state,
+        hashtagPlaylists: action.hashtagPlaylists,
       };
     case "playlistDetails":
       return {
@@ -185,7 +209,10 @@ const playlistReducer = (state, action) => {
           ...state,
           following: {
             ...action.following,
-            results: [...state.following, ...action.following],
+            results: [
+              ...(state.following?.results || []),
+              ...(action.following?.results || []),
+            ],
           },
         };
       }
@@ -199,13 +226,16 @@ const playlistReducer = (state, action) => {
           ...state,
           followers: {
             ...action.followers,
-            results: [...state.followers, ...action.followers],
+            results: [
+              ...(state.followers?.results || []),
+              ...(action.followers?.results || []),
+            ],
           },
         };
       }
       return {
         ...state,
-        followers: action.followers,
+        followers: action.followers, // Replace followers when not appending
       };
   }
 };
@@ -287,7 +317,8 @@ const getAllPlaylists =
       if (res.status === 200) {
         dispatch({
           type: "allPlaylists",
-          allPlaylists: res?.data,
+          allPlaylists: res?.data?.playlists,
+          has_uploaded: res?.data?.has_uploaded,
           append: !!nextFeed,
         });
       }
@@ -337,7 +368,7 @@ const getProfileData = (dispatch) => async (profileID) => {
 //Fetch a users playlists
 const getPlaylistData =
   (dispatch) =>
-  async (userID, nextPage = null) => {
+  async (userID = null, nextPage = null) => {
     const token = await SecureStore.getItemAsync("token", {});
     try {
       const url = nextPage
@@ -389,6 +420,38 @@ const getFollowersPlaylists =
       dispatch({
         type: "error_1",
         payload: "Something went wrong. Please try again.",
+      });
+    }
+  };
+
+// Fetch playlists by hashtag
+const getPlaylistByHashtag =
+  (dispatch) =>
+  async (hashtag, nextPage = null) => {
+    const token = await SecureStore.getItemAsync("token", {});
+    try {
+      const url = nextPage
+        ? nextPage
+        : `${BACKEND_URL}/feed/playlists/hashtag/?hashtag=${encodeURIComponent(
+            hashtag
+          )}`;
+      const res = await axios.get(url, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+      });
+      if (res.status === 200) {
+        dispatch({
+          type: "hashtagPlaylists",
+          hashtagPlaylists: res.data,
+          append: !!nextPage,
+        });
+      }
+    } catch (err) {
+      dispatch({
+        type: "error_1",
+        payload: "Something went wrong. Please try again." + err,
       });
     }
   };
@@ -870,26 +933,26 @@ const getFollowing =
     }
   };
 
-// Get list of following
+// Get list of followers
 const getFollowers =
   (dispatch) =>
-  async (to_user, id, nextPage = null) => {
+  async (id, nextPage = null) => {
     const token = await SecureStore.getItemAsync("token");
     try {
       const url = nextPage
         ? nextPage
-        : `${BACKEND_URL}/users/user-followers/?user_id=${to_user || id}`;
+        : `${BACKEND_URL}/users/user-followers/?user_id=${id}`;
       const res = await axios.get(url, {
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
         },
       });
+
       if (res.status === 200) {
-        const data = res?.data;
         dispatch({
           type: "followers",
-          followers: data,
+          followers: res.data, // Pass the full data object
           append: !!nextPage,
         });
       }
@@ -910,6 +973,7 @@ export const { Provider, Context } = context(
     getProfileData,
     getPlaylistData,
     getFollowersPlaylists,
+    getPlaylistByHashtag,
     postPlaylist,
     fetchPlaylist,
     fetchMoreTracks,

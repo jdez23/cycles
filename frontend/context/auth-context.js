@@ -205,7 +205,6 @@ const login = (dispatch) => async (token) => {
 const signInWithPhone = (dispatch) => async (data) => {
   try {
     const confirm = await firebase.auth().signInWithPhoneNumber(data);
-    console.log(confirm);
     await dispatch({ type: "confirmation", payload: confirm });
   } catch (err) {
     dispatch({

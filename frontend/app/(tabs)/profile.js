@@ -134,19 +134,28 @@ const MyProfile = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.actionButtonsContainer}>
-          {!myProfileData?.spotify_url || "null" ? null : (
+          {!myProfileData?.spotify_url ? null : (
             <TouchableOpacity
-              onPress={() => Linking.openURL(myProfileData?.spotify_url)}
+              onPress={() =>
+                Linking.openURL(
+                  !myProfileData?.spotify_url
+                    ? null
+                    : myProfileData?.spotify_url
+                )
+              }
             >
               <View style={styles.spotifyButton}>
                 <Image
-                  style={{ width: 15, height: 15 }}
+                  style={{ width: 20, height: 20 }}
                   source={Spotify_Icon_RGB_Green}
                 />
               </View>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={onEditProfile} style={{ zIndex: 1 }}>
+          <TouchableOpacity
+            onPress={onEditProfile}
+            style={{ zIndex: 1, paddingLeft: 4 }}
+          >
             <View style={styles.editProfileButton}>
               <Text style={styles.editProfileText}>Edit Profile</Text>
             </View>
@@ -301,13 +310,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 6,
+    marginVertical: 8,
   },
   spotifyButton: {
-    height: 25,
-    width: 25,
+    height: 35,
+    width: 35,
     borderRadius: 30,
-    backgroundColor: "#111111",
+    backgroundColor: "#181818",
     alignItems: "center",
     justifyContent: "center",
   },

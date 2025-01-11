@@ -3,6 +3,8 @@ import {
   StyleSheet,
   Image,
   View,
+  Modal,
+  Alert,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -37,6 +39,7 @@ const DiscoverFeed = () => {
   const [isPressed, setPressed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const authContext = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const playlistContext = useContext(PlaylistContext);
@@ -63,6 +66,12 @@ const DiscoverFeed = () => {
   useEffect(() => {
     playlistContext?.getAllPlaylists();
   }, [authContext?.state.token]);
+
+  useEffect(() => {
+    if (playlistContext?.state?.has_uploaded == false) {
+      setModalVisible(true);
+    }
+  }, [playlistContext?.state?.has_uploaded]);
 
   const wait = (timeout) => {
     // Defined the timeout function for testing purpose
@@ -91,7 +100,7 @@ const DiscoverFeed = () => {
     const me = await getUserID();
     router.push({
       pathname: "/screens/playlist-screen",
-      params: { playlist_id: item.id, me: me, fromTab: "discover" },
+      params: { playlist_id: item.id, me: me },
     });
   };
 
@@ -158,61 +167,62 @@ const DiscoverFeed = () => {
             source={{ uri: item.playlist_cover }}
           />
         ) : null}
-        <View
+      </Pressable>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginTop: 10,
+          width: window / 2 - 22,
+        }}
+      >
+        <Pressable
+          onPress={() => onUserPic(item)}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginTop: 10,
-            width: window / 2 - 22,
+            height: 30,
+            width: 30,
+            borderRadius: 30,
+            backgroundColor: "#1f1f1f",
           }}
         >
-          <Pressable
-            onPress={() => onUserPic(item)}
-            style={{
-              height: 30,
-              width: 30,
-              borderRadius: 30,
-              backgroundColor: "#121212",
-            }}
-          >
-            <Image
-              style={{ height: 30, width: 30, borderRadius: 30 }}
-              source={item.avi_pic ? { uri: item?.avi_pic } : default_avi}
-            />
+          <Image
+            style={{ height: 30, width: 30, borderRadius: 30 }}
+            source={item.avi_pic ? { uri: item?.avi_pic } : default_avi}
+          />
+        </Pressable>
+        <View
+          style={{
+            flexDirection: "column",
+            marginLeft: 8,
+            width: window / 2 - 60,
+          }}
+        >
+          <Pressable onPress={() => onUserPic(item)}>
+            <Text
+              style={{
+                textAlign: "left",
+                color: "white",
+                fontSize: 13,
+              }}
+              numberOfLines={1}
+            >
+              {item.username}
+            </Text>
           </Pressable>
-          <View
+
+          <Text
             style={{
-              flexDirection: "column",
-              marginLeft: 8,
-              width: window / 2 - 60,
+              textAlign: "left",
+              color: "lightgrey",
+              fontSize: 12,
+              marginTop: 1,
             }}
+            numberOfLines={1}
           >
-            <View>
-              <Text
-                style={{
-                  textAlign: "left",
-                  color: "white",
-                  fontSize: 13,
-                }}
-                numberOfLines={1}
-              >
-                {item.username}
-              </Text>
-              <Text
-                style={{
-                  textAlign: "left",
-                  color: "lightgrey",
-                  fontSize: 12,
-                  marginTop: 1,
-                }}
-                numberOfLines={1}
-              >
-                {item.playlist_title}
-              </Text>
-            </View>
-          </View>
+            {item.playlist_title}
+          </Text>
         </View>
-      </Pressable>
+      </View>
     </View>
   );
 
@@ -395,6 +405,10 @@ const DiscoverFeed = () => {
       } catch (error) {}
   };
 
+  const handleButtonClick = () => {
+    router.navigate("new_playlist");
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.container}>
@@ -513,7 +527,11 @@ const DiscoverFeed = () => {
             numColumns={2}
             initialNumToRender={10}
             refreshing={isRefreshing}
-            onRefresh={onRefresh}
+            onRefresh={
+              playlistContext?.state?.allPlaylists?.has_uploaded
+                ? onRefresh
+                : null
+            }
             onEndReached={() => loadMorePlaylists(nextFeed)}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
@@ -526,6 +544,21 @@ const DiscoverFeed = () => {
           ></FlatList>
         )}
       </View>
+      {modalVisible == true ? (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>
+              Share a playlist to unlock all playlists and curators!
+            </Text>
+            <Pressable
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => handleButtonClick()}
+            >
+              <Text style={styles.buttonText}>Share a Playlist</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -606,6 +639,46 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     justifyContent: "center",
     alignItems: "center",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Transparent tint
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalView: {
+    top: 60,
+    backgroundColor: "#111111",
+    padding: 50,
+    borderRadius: 20,
+    alignItems: "center",
+    width: "60%",
+  },
+  modalText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    color: "white",
+    fontFamily: "Futura",
+    fontWeight: "bold",
+  },
+  button: {
+    backgroundColor: "#1db954",
+    borderRadius: 8,
+    padding: 10,
+  },
+  buttonClose: {
+    backgroundColor: "#1db954",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Futura",
+    fontWeight: "bold",
   },
 });
 

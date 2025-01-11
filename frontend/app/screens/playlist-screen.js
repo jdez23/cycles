@@ -10,16 +10,17 @@ import {
   Linking,
   ActivityIndicator,
   SectionList,
+  FlatList,
   Dimensions,
   TouchableOpacity,
 } from "react-native";
 import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.png";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import Octicons from "@expo/vector-icons/Octicons";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Feather from "react-native-vector-icons/Feather";
 import { router, useLocalSearchParams } from "expo-router";
 import { Context as PlaylistContext } from "../../context/playlist-context";
-import { Context as AuthContext } from "../../context/auth-context";
 import Toast from "react-native-root-toast";
 import ActionSheet from "react-native-actionsheet";
 import { Audio } from "expo-av";
@@ -31,7 +32,6 @@ const Playlist = () => {
   const actionSheet = useRef();
   const optionArray = ["Delete", "Update", "Cancel"];
   const playlistContext = useContext(PlaylistContext);
-  const authContext = useContext(AuthContext);
   const params = useLocalSearchParams();
   const { playlist_id } = params;
 
@@ -44,7 +44,7 @@ const Playlist = () => {
   const [currentTrackId, setCurrentTrackId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [me, setMe] = useState(null);
+  const me = params.me;
 
   const [loadingState, setLoadingState] = useState({
     isInitialLoading: true, // Initially loading
@@ -78,8 +78,6 @@ const Playlist = () => {
 
   const fetchInitialData = async () => {
     setLoadingState((prev) => ({ ...prev, isInitialLoading: true }));
-    const me = await authContext?.getCurrentUser();
-    setMe(me);
     try {
       await playlistContext?.fetchPlaylist(playlist_id);
     } finally {
@@ -102,11 +100,11 @@ const Playlist = () => {
     fetchInitialData();
   }, [playlist_id]);
 
-  //Listen for Callback URL
-  useEffect(() => {
-    const callback = Linking.addEventListener("url", onSpotifyCallback);
-    return () => callback.remove();
-  }, [authContext?.state.token]);
+  // //Listen for Callback URL
+  // useEffect(() => {
+  //   const callback = Linking.addEventListener("url", onSpotifyCallback);
+  //   return () => callback.remove();
+  // }, [authContext?.state.token]);
 
   const onComments = () => {
     router.push({
@@ -160,21 +158,21 @@ const Playlist = () => {
     }
   };
 
-  //Spotify Callback
-  const onSpotifyCallback = async (url) => {
-    if (url !== null) {
-      const urlCallback = new URL(url.url);
-      const code = urlCallback.searchParams.get("code");
-      const tokenresponse = await authContext?.spotifyCallback(code);
-      const data = {
-        access_token: tokenresponse.access_token,
-        token_type: tokenresponse.token_type,
-        expires_in: tokenresponse.expires_in,
-        refresh_token: tokenresponse.refresh_token,
-      };
-      await authContext?.spotifyLogin(data);
-    }
-  };
+  // //Spotify Callback
+  // const onSpotifyCallback = async (url) => {
+  //   if (url !== null) {
+  //     const urlCallback = new URL(url.url);
+  //     const code = urlCallback.searchParams.get("code");
+  //     const tokenresponse = await authContext?.spotifyCallback(code);
+  //     const data = {
+  //       access_token: tokenresponse.access_token,
+  //       token_type: tokenresponse.token_type,
+  //       expires_in: tokenresponse.expires_in,
+  //       refresh_token: tokenresponse.refresh_token,
+  //     };
+  //     await authContext?.spotifyLogin(data);
+  //   }
+  // };
 
   const onDeletePlaylist = async (userID) => {
     setLoadingState((prevState) => ({
@@ -187,6 +185,7 @@ const Playlist = () => {
       if (res === 200) {
         await playlistContext.getFollowersPlaylists();
         await playlistContext.getMyPlaylistData();
+        await playlistContext.getAllPlaylists();
         if (userID) {
           await playlistContext.getPlaylistData();
         }
@@ -306,6 +305,14 @@ const Playlist = () => {
     router.back();
   };
 
+  // Go to hasthtag playlists
+  const onHashtag = (item) => {
+    router.push({
+      pathname: "./hashtag-playlists",
+      params: { hashtag: item },
+    });
+  };
+
   if (loadingState.isInitialLoading) {
     return (
       <View
@@ -325,7 +332,6 @@ const Playlist = () => {
     return (
       <View
         style={{
-          paddingBottom: 12,
           borderBottomColor: "#1f1f1f",
           borderBottomWidth: 0.3,
         }}
@@ -340,73 +346,63 @@ const Playlist = () => {
             source={{ uri: playlist?.playlist_cover }}
           />
         )}
+
+        {/* Heart and comment */}
         <View
           style={{
             flexDirection: "row",
-            justifyContent: "flex-start",
             paddingHorizontal: 12,
-            marginVertical: 12,
-          }}
-        >
-          <View style={{ flexDirection: "row" }}>
-            <View
-              style={{
-                height: 25,
-                width: 25,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TouchableOpacity onPress={toggleLike}>
-                <FontAwesome
-                  name={playlist?.isLiked ? "heart" : "heart-o"}
-                  size={24}
-                  color={playlist?.isLiked ? "red" : "white"}
-                />
-              </TouchableOpacity>
-            </View>
-            <View
-              style={{
-                height: 25,
-                width: 25,
-                marginLeft: 15,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TouchableOpacity onPress={() => onComments()}>
-                <Feather name="message-circle" size={25} color={"white"} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity onPress={() => onComments()}>
-          <Text
-            style={{
-              color: "lightgrey",
-              fontSize: 13,
-              fontWeight: "500",
-              paddingLeft: 12,
-              marginBottom: 12,
-            }}
-          >
-            See all comments
-          </Text>
-        </TouchableOpacity>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            paddingHorizontal: 12,
+            paddingTop: 12,
             alignItems: "center",
           }}
         >
           <View
             style={{
+              height: 25,
+              width: 25,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TouchableOpacity onPress={toggleLike}>
+              <Octicons
+                name={playlist?.isLiked ? "heart-fill" : "heart"}
+                size={25}
+                color={playlist?.isLiked ? "red" : "white"}
+              />
+            </TouchableOpacity>
+          </View>
+          <View
+            style={{
+              height: 25,
+              width: 25,
+              marginLeft: 15,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TouchableOpacity onPress={() => onComments()}>
+              <FontAwesome5 name="comment" size={25} color={"white"} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "column",
+            paddingTop: 12,
+            paddingBottom: 12,
+          }}
+        >
+          <View
+            style={{
               flexDirection: "row",
+              justifyContent: "space-between",
+              paddingHorizontal: 12,
               alignItems: "center",
             }}
           >
+            {/* Playlist Cover */}
             {!playlist?.playlist_cover ? null : (
               <Image
                 style={{
@@ -419,16 +415,25 @@ const Playlist = () => {
                 source={{ uri: playlist?.playlist_cover }}
               />
             )}
+
+            {/* Playlist Title and Type */}
             <View
               style={{
+                flex: 1, // Ensures the column stretches within available space
                 flexDirection: "column",
-                alignSelf: "center",
                 paddingLeft: 10,
+                paddingRight: 10, // Add padding for proper spacing
               }}
             >
               {!playlist?.playlist_title ? null : (
                 <Text
-                  style={{ color: "white", fontSize: 13, fontWeight: "600" }}
+                  style={{
+                    color: "white",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    lineHeight: 18, // Improves readability for wrapped text
+                    flexWrap: "wrap", // Ensures text wraps
+                  }}
                 >
                   {playlist?.playlist_title}
                 </Text>
@@ -444,25 +449,87 @@ const Playlist = () => {
                 {playlist?.playlist_type}
               </Text>
             </View>
+            {/* Spotify Icon */}
+            {!playlist?.playlist_url ? null : (
+              <Pressable
+                onPress={() => Linking.openURL(playlist?.playlist_url)}
+              >
+                <View
+                  style={{
+                    height: 25,
+                    width: 25,
+                    borderRadius: 30,
+                    backgroundColor: "#1f1f1f",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Image
+                    style={{ width: 15, height: 15 }}
+                    source={Spotify_Icon_RGB_Green}
+                  />
+                </View>
+              </Pressable>
+            )}
           </View>
-          {!playlist?.playlist_url ? null : (
-            <Pressable onPress={() => Linking.openURL(playlist?.playlist_url)}>
-              <View
+
+          {/* Description */}
+          {!playlist?.playlist_description ? null : (
+            <View
+              style={{
+                marginHorizontal: 12,
+                marginTop: 8,
+              }}
+            >
+              <Text
                 style={{
-                  height: 25,
-                  width: 25,
-                  borderRadius: 30,
-                  backgroundColor: "#1f1f1f",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  color: "white",
+                  fontSize: 13,
+                  lineHeight: 18, // Adjust line height for better readability
                 }}
               >
-                <Image
-                  style={{ width: 15, height: 15 }}
-                  source={Spotify_Icon_RGB_Green}
-                />
-              </View>
-            </Pressable>
+                <Text
+                  style={{
+                    fontWeight: "500",
+                  }}
+                >
+                  {playlist?.playlist_description}
+                </Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Hahstags */}
+          {playlist?.hashtags && playlist?.hashtags?.length > 0 && (
+            <View
+              style={{
+                flexDirection: "row",
+                paddingTop: 8,
+                paddingHorizontal: 12,
+              }}
+            >
+              <FlatList
+                data={playlist.hashtags}
+                horizontal
+                scrollEnabled={playlist?.hashtags?.length > 1 ? true : false}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => onHashtag(item)}
+                    style={{
+                      backgroundColor: "#333",
+                      borderRadius: 20,
+                      paddingVertical: 6,
+                      paddingHorizontal: 12,
+                      marginRight: 8,
+                    }}
+                  >
+                    <Text style={{ color: "white", fontSize: 14 }}>{item}</Text>
+                  </Pressable>
+                )}
+                showsHorizontalScrollIndicator={false}
+              />
+            </View>
           )}
         </View>
       </View>
@@ -473,51 +540,47 @@ const Playlist = () => {
     return (
       <View style={styles.trackContainer}>
         <Pressable onPress={() => playSound(item)} style={styles.trackRow}>
-          <View style={styles.trackInfo}>
-            <Image
-              style={styles.trackAlbumCover}
-              source={{ uri: item?.images }}
-            />
-            <View style={styles.trackDetails}>
-              <Text
-                style={styles.trackTitle}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item?.name}
-              </Text>
-              <Text style={styles.trackArtist}>{item?.artist}</Text>
-            </View>
-          </View>
-          <View style={styles.trackIconContainer}>
-            {isPlaying && item.id === currentTrackId ? (
-              <Progress.Circle
-                size={17}
-                progress={progress}
-                thickness={1.2}
-                color="darkgrey"
-                borderWidth={0}
-                style={styles.progressCircle}
-              />
-            ) : null}
-            <Pressable
-              style={styles.spotifyIcon}
-              onPress={() => Linking.openURL(item?.track_id)}
-            >
-              <Image
-                style={styles.spotifyImage}
-                source={Spotify_Icon_RGB_Green}
-              />
-            </Pressable>
+          <Image
+            style={styles.trackAlbumCover}
+            source={{ uri: item?.images }}
+          />
+          <View style={styles.trackDetails}>
+            <Text style={styles.trackTitle} numberOfLines={1}>
+              {item?.name}
+            </Text>
+            <Text numberOfLines={1} style={styles.trackArtist}>
+              {item?.artist}
+            </Text>
           </View>
         </Pressable>
+        <View style={styles.trackIconContainer}>
+          {isPlaying && item.id === currentTrackId ? (
+            <Progress.Circle
+              size={17}
+              progress={progress}
+              thickness={1.5}
+              color="darkgrey"
+              borderWidth={0}
+              style={styles.progressCircle}
+            />
+          ) : null}
+          <Pressable
+            style={styles.spotifyIcon}
+            onPress={() => Linking.openURL(item?.track_id)}
+          >
+            <Image
+              style={styles.spotifyImage}
+              source={Spotify_Icon_RGB_Green}
+            />
+          </Pressable>
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.container}>
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.container}>
         <Pressable onPress={onBack}>
           <View style={styles.header}>
             <Ionicons name="chevron-back" size={25} color={"white"} />
@@ -542,7 +605,7 @@ const Playlist = () => {
         ) : (
           <View style={{ height: 50, width: 50, justifyContent: "center" }} />
         )}
-      </View>
+      </SafeAreaView>
       <View style={{ flex: 1, justifyContent: "center" }}>
         {tracks ? (
           <SectionList
@@ -589,23 +652,19 @@ const Playlist = () => {
           <ActivityIndicator size="small" />
         </View>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#111111",
-    alignItems: "center",
     flex: 1,
-    width: window,
   },
   container: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 50,
-    width: window,
     backgroundColor: "#111111",
     borderBottomColor: "#232323",
     borderBottomWidth: 0.3,
@@ -623,21 +682,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   trackContainer: {
-    justifyContent: "center",
-    width: window,
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 12,
+    flexDirection: "row",
+    paddingHorizontal: 12,
   },
   trackRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 4,
-    paddingHorizontal: 12,
     alignItems: "center",
-  },
-  trackInfo: {
-    paddingTop: 7,
-    flexDirection: "row",
-    alignItems: "center",
+    flex: 1,
   },
   trackAlbumCover: {
     width: 50,
@@ -649,13 +705,12 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignSelf: "center",
     paddingLeft: 10,
-    maxWidth: "65%", // Allows for truncation without pushing the Spotify icon
+    flex: 1,
   },
   trackTitle: {
     color: "white",
     fontSize: 13,
     fontWeight: "600",
-    width: "100%",
   },
   trackArtist: {
     marginTop: 2,
@@ -666,6 +721,7 @@ const styles = StyleSheet.create({
   trackIconContainer: {
     flexDirection: "row",
     alignItems: "center",
+    paddingLeft: 15,
   },
   progressCircle: {
     marginRight: 15,

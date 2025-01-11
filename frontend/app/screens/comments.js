@@ -85,7 +85,7 @@ const CommentsScreen = () => {
   const loadMorePlaylists = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getComments(nextPage, playlist_id);
+      await playlistContext?.getComments(nextPage);
       setLoading(false);
     }
   };
@@ -351,11 +351,11 @@ const CommentsScreen = () => {
 
   return (
     <GestureHandlerRootView
-      style={{ flex: 1, backgroundColor: "#151515" }}
+      style={{ flex: 1, backgroundColor: "#111111" }}
       keyboardVerticalOffset={47}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <SafeAreaView style={{ backgroundColor: "#151515", flex: 1 }}>
+      <SafeAreaView style={{ backgroundColor: "#111111", flex: 1 }}>
         <View style={styles.container}>
           <Pressable onPress={onBack}>
             <View style={styles.back}>

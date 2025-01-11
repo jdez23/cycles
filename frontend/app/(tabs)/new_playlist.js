@@ -5,6 +5,8 @@ import {
   Text,
   Image,
   Linking,
+  Dimensions,
+  TextInput,
   SafeAreaView,
   TouchableOpacity,
   TouchableHighlight,
@@ -29,6 +31,56 @@ const CreatePlaylist = () => {
   const selected_playlist = playlistContext?.state?.selectedSpotifyPlaylist;
   const continueDisabled = !selected_playlist;
   const getToken = async () => await SecureStore.getItemAsync("token");
+  const [hashtag, setHashtag] = useState("");
+  const [hashtags, setHashtags] = useState([]);
+
+  // Validate and add hashtag
+  const addHashtag = () => {
+    const MAX_LENGTH = 30; // Define the maximum length for a hashtag
+
+    if (hashtag.trim()) {
+      // Normalize the hashtag
+      const formattedHashtag = hashtag
+        .trim()
+        .toLowerCase() // Optional: Convert to lowercase for consistency
+        .replace(/\s+/g, "_"); // Replace spaces with underscores
+
+      // Ensure the hashtag starts with "#"
+      const finalHashtag = formattedHashtag.startsWith("#")
+        ? formattedHashtag
+        : `#${formattedHashtag}`;
+
+      // Check if the hashtag exceeds the maximum length
+      if (finalHashtag.length > MAX_LENGTH) {
+        Toast.show(
+          `Hashtag too long! Max length is ${MAX_LENGTH} characters.`,
+          {
+            duration: Toast.durations.SHORT,
+            position: Toast.positions.CENTER,
+          }
+        );
+        return; // Exit the function if the hashtag is too long
+      }
+
+      // Check for duplicates
+      if (!hashtags.includes(finalHashtag)) {
+        setHashtags([...hashtags, finalHashtag]);
+        setHashtag(""); // Clear the input field
+      } else {
+        Toast.show("Hashtag already added!", {
+          duration: Toast.durations.SHORT,
+          position: Toast.positions.CENTER,
+        });
+      }
+    }
+  };
+
+  // Remove hashtag by index
+  const removeHashtag = (index) => {
+    const updatedHashtags = [...hashtags];
+    updatedHashtags.splice(index, 1);
+    setHashtags(updatedHashtags);
+  };
 
   //Listen for Callback URL
   useEffect(() => {
@@ -85,23 +137,27 @@ const CreatePlaylist = () => {
     setLoading(true);
     try {
       const token = await getToken();
-      const formData = new FormData();
-      formData.append("playlist_url", selected_playlist.external_urls.spotify);
-      formData.append("playlist_ApiURL", selected_playlist.href);
-      formData.append("playlist_id", selected_playlist.id);
-      formData.append("playlist_cover", selected_playlist.images[0].url);
-      formData.append("playlist_title", selected_playlist.name);
-      formData.append("playlist_type", selected_playlist.type);
-      formData.append("playlist_uri", selected_playlist.uri);
-      formData.append("playlist_tracks", selected_playlist.tracks.href);
+
+      const data = {
+        hashtags, // Array of hashtags
+        playlist_url: selected_playlist.external_urls.spotify,
+        playlist_ApiURL: selected_playlist.href,
+        playlist_id: selected_playlist.id,
+        playlist_cover: selected_playlist.images[0].url,
+        playlist_title: selected_playlist.name,
+        playlist_description: selected_playlist.description,
+        playlist_type: selected_playlist.type,
+        playlist_uri: selected_playlist.uri,
+        playlist_tracks: selected_playlist.tracks.href,
+      };
 
       const response = await axios.post(
         `${BACKEND_URL}/feed/my-playlists/`,
-        formData,
+        data,
         {
           headers: {
             Authorization: token,
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "application/json",
             Accept: "application/json",
           },
         }
@@ -109,8 +165,10 @@ const CreatePlaylist = () => {
 
       if (response.status === 201) {
         playlistContext?.clearSelectedPlaylist();
+        setHashtags([]);
         playlistContext?.getFollowersPlaylists();
-        router.push("(tabs)/home");
+        playlistContext?.getAllPlaylists();
+        router.replace("(tabs)/home");
       } else {
         // Handle unexpected status codes
         authContext?.dispatch({
@@ -120,7 +178,7 @@ const CreatePlaylist = () => {
       }
     } catch (error) {
       // Extract error message from the response if available
-      let errorMessage = "Something went wrong. Please try again.";
+      let errorMessage = "Hmmm... Something went wrong. Please try again";
       if (error.response && error.response.data) {
         errorMessage = error.response.data.message || errorMessage;
       } else if (error.message) {
@@ -139,6 +197,7 @@ const CreatePlaylist = () => {
   //Navigate back to previous screen
   const cancel = () => {
     playlistContext?.clearSelectedPlaylist();
+    setHashtags([]);
   };
 
   return (
@@ -162,7 +221,7 @@ const CreatePlaylist = () => {
                 : styles.cancel_text
             }
           >
-            Cancel
+            Clear
           </Text>
         </TouchableOpacity>
         <Text style={styles.header_text}>Upload Playlist</Text>
@@ -217,6 +276,31 @@ const CreatePlaylist = () => {
           </View>
         </TouchableHighlight>
       )}
+      {/* Display existing hashtags */}
+      <View style={styles.chipContainer}>
+        {hashtags.map((tag, index) => (
+          <View key={index} style={styles.chip}>
+            <Text style={styles.chipText}>{tag}</Text>
+            <TouchableOpacity onPress={() => removeHashtag(index)}>
+              <Text style={styles.removeIcon}>x</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+      {/* Input for new hashtags */}
+      <TextInput
+        style={styles.input}
+        value={hashtag}
+        onChangeText={setHashtag}
+        onSubmitEditing={addHashtag} // Add hashtag on Enter/Done
+        placeholder="Add a hashtag"
+        placeholderTextColor="lightgrey"
+        selectionColor="white"
+      />
+      {/* Add button */}
+      <TouchableOpacity style={styles.addButton} onPress={addHashtag}>
+        <Text style={styles.addButtonText}>Add</Text>
+      </TouchableOpacity>
       {loading == true ? (
         <View
           style={{
@@ -298,18 +382,6 @@ const styles = StyleSheet.create({
     color: "#0C8ECE",
     textAlign: "left",
   },
-  description_container: {
-    flexDirection: "row",
-    paddingTop: 12,
-  },
-  description_text: {
-    paddingHorizontal: 12,
-    fontSize: 13,
-    color: "white",
-    textAlign: "left",
-    height: 80,
-    width: "100%",
-  },
   selected_playlist: {
     flexDirection: "row",
     height: 100,
@@ -342,6 +414,54 @@ const styles = StyleSheet.create({
     bottom: 15,
     justifyContent: "center",
     alignItems: "center",
+  },
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 8,
+    marginHorizontal: 12,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#333",
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  chipText: {
+    color: "white",
+    fontSize: 14,
+    marginRight: 8,
+  },
+  removeIcon: {
+    color: "red",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  input: {
+    backgroundColor: "#1E1E1E",
+    color: "white",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    marginHorizontal: 12,
+  },
+  addButton: {
+    marginTop: 10,
+    backgroundColor: "#32D74B",
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  addButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
 

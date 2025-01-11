@@ -8,11 +8,11 @@ import {
   SafeAreaView,
   Pressable,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-root-toast";
 import { router, useLocalSearchParams } from "expo-router";
 import default_avi from "../../assets/images/default_avi.jpg";
@@ -30,8 +30,6 @@ const FollowingList = () => {
   const playlistContext = useContext(PlaylistContext);
   const following = playlistContext?.state?.following?.results;
   const nextPage = playlistContext?.state?.following?.next;
-
-  // console.log(params);
 
   useEffect(() => {
     if (playlistContext?.state?.errorMessage) {
@@ -92,7 +90,7 @@ const FollowingList = () => {
   const loadMore = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getFollowing(id, nextPage);
+      await playlistContext?.getFollowing(user_id || id, nextPage);
       setLoading(false);
     }
   };
@@ -180,9 +178,8 @@ const FollowingList = () => {
           renderItem={_renderItem}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
-          initialNumToRender={10}
           onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={0.3}
           ListFooterComponent={
             loading ? (
               <View style={styles.loadingContainer}>
