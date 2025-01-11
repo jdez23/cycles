@@ -22,36 +22,22 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     serializer_class = UserPlaylistSerializer
     pagination_class = None
 
-    # def list(self, request, *args, **kwargs):
-    #     user = request.user
-    #     has_uploaded = Playlist.objects.filter(user=user).exists()
-
-    #     if has_uploaded:
-    #         # Return all playlists if user has uploaded a playlist
-    #         playlists = Playlist.objects.all().order_by('?')
-    #     else:
-    #         # Return only 4 playlists if the user hasn't uploaded a playlist
-    #         playlists = Playlist.objects.all()[:6]
-
-    #     serializer = self.serializer_class(playlists, many=True)
-    #     return Response({
-    #         "has_uploaded": has_uploaded,
-    #         "playlists": serializer.data
-    #     })
-
-    def get_queryset(self, request):
+    def list(self, request, *args, **kwargs):
         user = request.user
-        try:
-            if Playlist.objects.filter(user=user).exists():
-                # User has uploaded a playlist, return all playlists
-                playlists = Playlist.objects.all().order_by('?')
-            else:
-                # User has not uploaded a playlist, limit to 4 playlists
-                playlists = Playlist.objects.all()[:4]
-            return playlists
+        has_uploaded = Playlist.objects.filter(user=user).exists()
 
-        except:
-            return Response(status=500)
+        if has_uploaded:
+            # Return all playlists if user has uploaded a playlist
+            playlists = Playlist.objects.all().order_by('?')
+        else:
+            # Return only 4 playlists if the user hasn't uploaded a playlist
+            playlists = Playlist.objects.all()[:6]
+
+        serializer = self.serializer_class(playlists, many=True)
+        return Response({
+            "has_uploaded": has_uploaded,
+            "playlists": serializer.data
+        })
 
 
 # GET PLAYLIST DETAILS /UPDATE PLAYLIST
