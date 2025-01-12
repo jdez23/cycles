@@ -3,8 +3,6 @@ import {
   StyleSheet,
   Image,
   View,
-  Modal,
-  Alert,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -527,11 +525,7 @@ const DiscoverFeed = () => {
             numColumns={2}
             initialNumToRender={10}
             refreshing={isRefreshing}
-            onRefresh={
-              playlistContext?.state?.allPlaylists?.has_uploaded
-                ? onRefresh
-                : null
-            }
+            onRefresh={onRefresh}
             onEndReached={() => loadMorePlaylists(nextFeed)}
             onEndReachedThreshold={0.5}
             ListFooterComponent={

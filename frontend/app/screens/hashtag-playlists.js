@@ -16,6 +16,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router, useLocalSearchParams } from "expo-router";
 import Toast from "react-native-root-toast";
+import * as SecureStore from "expo-secure-store";
 import default_avi from "../../assets/images/default_avi.jpg";
 
 const window = Dimensions.get("window").width;
@@ -29,6 +30,7 @@ const HashtagPlaylists = () => {
   const [toast, setToast] = React.useState(null);
   const params = useLocalSearchParams();
   const hashtag = params?.hashtag;
+  const getUserID = async () => await SecureStore.getItemAsync("user_id");
 
   const playlistContext = useContext(PlaylistContext);
   const nextPage = playlistContext?.state?.hashtagPlaylists?.next;
@@ -70,6 +72,15 @@ const HashtagPlaylists = () => {
     return new Promise((resolve) => setTimeout(resolve, timeout));
   };
 
+  //Navigate to playlist detail screen
+  const onPlaylistDetail = async (item) => {
+    const me = await getUserID();
+    router.push({
+      pathname: "/screens/playlist-screen",
+      params: { playlist_id: item.id, me: me },
+    });
+  };
+
   const onRefresh = () => {
     setIsRefreshing(true);
     setLoadingData(true);
@@ -85,6 +96,14 @@ const HashtagPlaylists = () => {
       </View>
     ) : null;
     wait(2000).then(() => setIsRefreshing(false), setLoadingData(false));
+  };
+
+  const onUserPic = async (item) => {
+    const me = await getUserID();
+    router.push({
+      pathname: "/screens/user-profile",
+      params: { userID: item.user.id, playlist_id: item.id, me: me },
+    });
   };
 
   //Navigate back to previous screen
@@ -365,7 +384,7 @@ const HashtagPlaylists = () => {
         }
         contentContainerStyle={{
           justifyContent: "center",
-          alignItems: hashtagPlaylists.length > 1 ? "center" : null,
+          alignItems: hashtagPlaylists?.length > 1 ? "center" : null,
           paddingHorizontal: 12, // Ensure 12px padding on both sides
         }}
       />

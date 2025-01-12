@@ -358,7 +358,7 @@ const getProfileData = (dispatch) => async (profileID) => {
       null;
     }
   } catch (error) {
-    playlistContext?.dispatch({
+    dispatch({
       type: "error_1",
       payload: "Something went wrong. Please try again.",
     });

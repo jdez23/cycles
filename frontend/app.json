@@ -11,7 +11,7 @@
       "backgroundColor": "#111111"
     },
     "ios": {
-      "buildNumber": "7" ,
+      "buildNumber": "8" ,
       "entitlements": {
         "aps-environment": "production"
       },
@@ -20,7 +20,8 @@
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.cycles.frontend",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "useHermes": false
     },
     "android": {
       "adaptiveIcon": {

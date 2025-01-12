@@ -388,7 +388,7 @@
 				CODE_SIGN_ENTITLEMENTS = Cycles/Cycles.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 553AMT8AT5;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -432,7 +432,7 @@
 				CODE_SIGN_ENTITLEMENTS = Cycles/Cycles.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 553AMT8AT5;
 				INFOPLIST_FILE = Cycles/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
