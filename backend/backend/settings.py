@@ -163,7 +163,7 @@ EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = '/media/'
+MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/media/'
 MEDIA_ROOT = os.path.join('media')
 
 STATICFILES_STORAGE = os.environ["DEFAULT_FILE_STORAGE"]
