@@ -163,11 +163,6 @@ EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = 'https://cyclesapp.s3.amazonaws.com/media/'
-
-# STATICFILES_STORAGE = os.environ["DEFAULT_FILE_STORAGE"]
-# DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -183,10 +178,7 @@ STORAGES = {
             "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
             "bucket_name": os.environ.get("AWS_STORAGE_BUCKET_NAME"),
             "region_name": os.environ.get("AWS_S3_REGION_NAME"),
-            # You can set a base location for media files here:
-            "location": "media",  # This will prefix your keys with "media/"
-            # Custom or similar to signature_version
-            "signature_name": os.environ.get("AWS_S3_SIGNATURE_NAME"),
+            "location": "media",  # Optional: This prefixes all file keys with 'media/'
             "file_overwrite": os.environ.get("AWS_S3_FILE_OVERWRITE"),
             "default_acl": os.environ.get("AWS_DEFAULT_ACL"),
             "querystring_auth": os.environ.get("AWS_QUERYSTRING_AUTH"),
@@ -199,22 +191,13 @@ STORAGES = {
             "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
             "bucket_name": os.environ.get("AWS_STORAGE_BUCKET_NAME"),
             "region_name": os.environ.get("AWS_S3_REGION_NAME"),
-            # Optionally, define a different location for static files:
-            "location": "static",
+            "location": "static",  # If you want static files to be stored separately
         },
     },
 }
 
-# AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
-# AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
-# AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
-# AWS_S3_REGION_NAME = os.environ['AWS_S3_REGION_NAME']
-
-# AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
-# AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
-# AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
-# AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
-
+# Optionally, set MEDIA_URL to include the location if needed:
+MEDIA_URL = f'https://cyclesapp.s3.amazonaws.com/media/'
 # OPEN_AI_KEY = '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'
 
 django_heroku.settings(locals(), staticfiles=False)
