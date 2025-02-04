@@ -18,7 +18,7 @@ class SpotifyAuthURL(APIView):
 
     def get(self, request):
         try:
-            scopes = 'playlist-read-private user-read-private playlist-modify-public playlist-modify-private user-library-modify'
+            scopes = 'playlist-read-private user-read-private'
             url = Request('GET', 'https://accounts.spotify.com/authorize',
                           params={
                               'scope': scopes,
