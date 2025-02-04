@@ -17,4 +17,6 @@ urlpatterns = [
     path('get-description/', GetDescription.as_view(), name='get-description'),
     path('playlists/hashtag/',
          PlaylistsByHashtagView.as_view(), name='playlists-by-hashtag'),
+    path('generate-playlists/',
+         GeneratePlaylistView.as_view(), name='generate-playlists'),
 ]

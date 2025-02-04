@@ -18,7 +18,7 @@ class SpotifyAuthURL(APIView):
 
     def get(self, request):
         try:
-            scopes = 'playlist-read-private user-read-private'
+            scopes = 'playlist-read-private user-read-private playlist-modify-public playlist-modify-private user-library-modify'
             url = Request('GET', 'https://accounts.spotify.com/authorize',
                           params={
                               'scope': scopes,
@@ -165,6 +165,21 @@ class SpotifyPlaylistTracks(APIView):
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception("-------", e)
+
+
+# class AddSongToLikedPlaylist(APIView):
+#     def post(self, request):
+#         try:
+#             user = self.request.user
+#             spotify_playlist_id = request.GET.get('playlist_id')
+#             track_id = request.GET.get('track_id')
+
+#             endpoint = 'v1/playlists/'+spotify_playlist_id+"/tracks"
+#             execute_spotify_api_request(user, endpoint)
+
+#             return Response('true', status=status.HTTP_200_OK)
+#         except Exception as e:
+#             logger.exception("-------", e)
 
 
 class SpotifySearch(APIView):

@@ -164,7 +164,6 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = 'https://cyclesapp.s3.us-east-1.amazonaws.com/'
-MEDIA_ROOT = os.path.join('media')
 
 STATICFILES_STORAGE = os.environ["DEFAULT_FILE_STORAGE"]
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
@@ -184,5 +183,7 @@ AWS_S3_SIGNATURE_NAME = os.environ['AWS_S3_SIGNATURE_NAME']
 AWS_S3_FILE_OVERWRITE = os.environ['AWS_S3_FILE_OVERWRITE']
 AWS_DEFAULT_ACL = os.environ['AWS_DEFAULT_ACL']
 AWS_QUERYSTRING_AUTH = os.environ['AWS_QUERYSTRING_AUTH']
+
+OPEN_AI_KEY = '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'
 
 django_heroku.settings(locals(), staticfiles=False)
