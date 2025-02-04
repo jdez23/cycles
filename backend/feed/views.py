@@ -13,7 +13,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
 import logging
 import requests
-import openai
+# import openai
 
 
 logger = logging.getLogger(__name__)
@@ -760,147 +760,147 @@ class GetDescription(APIView):
 #     return Response({"message": "Playlist created successfully", "playlist_id": new_playlist.id})
 
 
-class GeneratePlaylistView(APIView):
-    openai.api_key = settings.OPEN_AI_KEY
+# class GeneratePlaylistView(APIView):
+#     openai.api_key = settings.OPEN_AI_KEY
 
-    def post(self, request):
-        """
-        Analyzes up to the first 20 tracks from the base playlist + user description,
-        asks ChatGPT for recommended songs, and then creates a new playlist on Spotify
-        with those recommended songs.
-        """
-        user = request.user
-        spotify_access_token = user.spotify_access_token
-        id_endpoint = 'v1/me'
-        spotify_username = execute_spotify_api_request(user, id_endpoint)
-        spotify_id = spotify_username['id']
+#     def post(self, request):
+#         """
+#         Analyzes up to the first 20 tracks from the base playlist + user description,
+#         asks ChatGPT for recommended songs, and then creates a new playlist on Spotify
+#         with those recommended songs.
+#         """
+#         user = request.user
+#         spotify_access_token = user.spotify_access_token
+#         id_endpoint = 'v1/me'
+#         spotify_username = execute_spotify_api_request(user, id_endpoint)
+#         spotify_id = spotify_username['id']
 
-        base_playlist_id = request.data.get("playlist_id")
-        description = request.data.get("description")
+#         base_playlist_id = request.data.get("playlist_id")
+#         description = request.data.get("description")
 
-        if not base_playlist_id:
-            return Response({"error": "Missing base_playlist_id."}, status=400)
+#         if not base_playlist_id:
+#             return Response({"error": "Missing base_playlist_id."}, status=400)
 
-        # 1. Get the first 20 tracks from the base playlist
-        url = f"https://api.spotify.com/v1/playlists/{base_playlist_id}/tracks?limit=20"
-        headers = {"Authorization": f"Bearer {spotify_access_token}"}
-        playlist_resp = requests.get(url, headers=headers)
+#         # 1. Get the first 20 tracks from the base playlist
+#         url = f"https://api.spotify.com/v1/playlists/{base_playlist_id}/tracks?limit=20"
+#         headers = {"Authorization": f"Bearer {spotify_access_token}"}
+#         playlist_resp = requests.get(url, headers=headers)
 
-        if playlist_resp.status_code != 200:
-            return Response(
-                {"error": "Could not fetch base playlist tracks."},
-                status=playlist_resp.status_code
-            )
+#         if playlist_resp.status_code != 200:
+#             return Response(
+#                 {"error": "Could not fetch base playlist tracks."},
+#                 status=playlist_resp.status_code
+#             )
 
-        tracks_data = playlist_resp.json()
-        track_names_artists = []
-        for item in tracks_data.get("items", []):
-            track = item["track"]
-            # Format "Song Name" by "Artist Name"
-            track_names_artists.append(
-                f"{track['name']} by {track['artists'][0]['name']}")
+#         tracks_data = playlist_resp.json()
+#         track_names_artists = []
+#         for item in tracks_data.get("items", []):
+#             track = item["track"]
+#             # Format "Song Name" by "Artist Name"
+#             track_names_artists.append(
+#                 f"{track['name']} by {track['artists'][0]['name']}")
 
-        # 2. Prepare a prompt for ChatGPT
-        # Example prompt: You can refine this to be more detailed with the user's context
-        prompt = (
-            f"You are a music expert. The user wants a playlist described as: '{description}'.\n"
-            "Here are up to 20 tracks from the user's base playlist:\n"
-            + "\n".join(track_names_artists) +
-            "\nSuggest 30 recommended songs that fit this vibe (include artist and track name)."
-            "\nMake sure the songs are available on Spotify and return them in a bullet list."
-        )
+#         # 2. Prepare a prompt for ChatGPT
+#         # Example prompt: You can refine this to be more detailed with the user's context
+#         prompt = (
+#             f"You are a music expert. The user wants a playlist described as: '{description}'.\n"
+#             "Here are up to 20 tracks from the user's base playlist:\n"
+#             + "\n".join(track_names_artists) +
+#             "\nSuggest 30 recommended songs that fit this vibe (include artist and track name)."
+#             "\nMake sure the songs are available on Spotify and return them in a bullet list."
+#         )
 
-        # 3. Call ChatGPT
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system",
-                    "content": "You are a helpful music recommendation assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
-        )
+#         # 3. Call ChatGPT
+#         response = openai.ChatCompletion.create(
+#             model="gpt-4",
+#             messages=[
+#                 {"role": "system",
+#                     "content": "You are a helpful music recommendation assistant."},
+#                 {"role": "user", "content": prompt}
+#             ],
+#             temperature=0.7
+#         )
 
-        # The response from ChatGPT (example format). You must parse the text
-        recommended_text = response["choices"][0]["message"]["content"]
+#         # The response from ChatGPT (example format). You must parse the text
+#         recommended_text = response["choices"][0]["message"]["content"]
 
-        print('RECOMMENDED DATA---', recommended_text)
+#         print('RECOMMENDED DATA---', recommended_text)
 
-        # 4. Parse recommended_text to extract track and artist data
-        # This heavily depends on how ChatGPT formats the response.
-        # For simplicity, let's assume it's a bullet list of "Song Name - Artist".
-        recommended_tracks = []
-        for line in recommended_text.split("\n"):
-            line = line.strip("-• ")
-            if not line:
-                continue
-            # naive parsing: "Song - Artist"
-            parts = line.split(" - ")
-            if len(parts) == 2:
-                song_name, artist_name = parts
-                recommended_tracks.append(
-                    {"song_name": song_name, "artist_name": artist_name})
+#         # 4. Parse recommended_text to extract track and artist data
+#         # This heavily depends on how ChatGPT formats the response.
+#         # For simplicity, let's assume it's a bullet list of "Song Name - Artist".
+#         recommended_tracks = []
+#         for line in recommended_text.split("\n"):
+#             line = line.strip("-• ")
+#             if not line:
+#                 continue
+#             # naive parsing: "Song - Artist"
+#             parts = line.split(" - ")
+#             if len(parts) == 2:
+#                 song_name, artist_name = parts
+#                 recommended_tracks.append(
+#                     {"song_name": song_name, "artist_name": artist_name})
 
-        # 5. Search each recommended track on Spotify to get track IDs
-        track_uris = []
-        for rec in recommended_tracks:
-            query = f"{rec['song_name']} {rec['artist_name']}"
-            search_url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
-            search_resp = requests.get(search_url, headers=headers)
-            if search_resp.status_code == 200:
-                search_data = search_resp.json()
-                items = search_data.get("tracks", {}).get("items", [])
-                if items:
-                    track_uris.append(items[0]["uri"])
+#         # 5. Search each recommended track on Spotify to get track IDs
+#         track_uris = []
+#         for rec in recommended_tracks:
+#             query = f"{rec['song_name']} {rec['artist_name']}"
+#             search_url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
+#             search_resp = requests.get(search_url, headers=headers)
+#             if search_resp.status_code == 200:
+#                 search_data = search_resp.json()
+#                 items = search_data.get("tracks", {}).get("items", [])
+#                 if items:
+#                     track_uris.append(items[0]["uri"])
 
-        # 6. Create a new playlist in Spotify
-        create_url = f"https://api.spotify.com/v1/users/{spotify_id}/playlists"
-        create_payload = {
-            "name": f"Cycles-Generated: {description[:30]}",
-            "description": description,
-            "public": True
-        }
-        create_resp = requests.post(
-            create_url, headers=headers, json=create_payload)
+#         # 6. Create a new playlist in Spotify
+#         create_url = f"https://api.spotify.com/v1/users/{spotify_id}/playlists"
+#         create_payload = {
+#             "name": f"Cycles-Generated: {description[:30]}",
+#             "description": description,
+#             "public": True
+#         }
+#         create_resp = requests.post(
+#             create_url, headers=headers, json=create_payload)
 
-        if create_resp.status_code != 201:
-            return Response({"error": "Could not create Spotify playlist."}, status=create_resp.status_code)
+#         if create_resp.status_code != 201:
+#             return Response({"error": "Could not create Spotify playlist."}, status=create_resp.status_code)
 
-        new_playlist = create_resp.json()
-        new_playlist_id = new_playlist["id"]
+#         new_playlist = create_resp.json()
+#         new_playlist_id = new_playlist["id"]
 
-        # 7. Add tracks to the newly created playlist
-        add_url = f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks"
-        add_payload = {
-            "uris": track_uris
-        }
-        add_resp = requests.post(add_url, headers=headers, json=add_payload)
+#         # 7. Add tracks to the newly created playlist
+#         add_url = f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks"
+#         add_payload = {
+#             "uris": track_uris
+#         }
+#         add_resp = requests.post(add_url, headers=headers, json=add_payload)
 
-        if add_resp.status_code not in [201, 200]:
-            return Response({"error": "Could not add tracks to playlist."}, status=add_resp.status_code)
+#         if add_resp.status_code not in [201, 200]:
+#             return Response({"error": "Could not add tracks to playlist."}, status=add_resp.status_code)
 
-        # Build preview data for each track to return to the frontend:
-        preview_info = []
-        for uri in track_uris:
-            track_id = uri.split(":")[-1]
-            track_info_url = f"https://api.spotify.com/v1/tracks/{track_id}"
-            info_resp = requests.get(track_info_url, headers=headers)
-            if info_resp.status_code == 200:
-                track_json = info_resp.json()
-                preview_info.append({
-                    "name": track_json["name"],
-                    "artist": track_json["artists"][0]["name"],
-                    "preview_url": track_json["preview_url"],
-                    "cover_url": track_json["album"]["images"][0]["url"] if track_json["album"]["images"] else None
-                })
+#         # Build preview data for each track to return to the frontend:
+#         preview_info = []
+#         for uri in track_uris:
+#             track_id = uri.split(":")[-1]
+#             track_info_url = f"https://api.spotify.com/v1/tracks/{track_id}"
+#             info_resp = requests.get(track_info_url, headers=headers)
+#             if info_resp.status_code == 200:
+#                 track_json = info_resp.json()
+#                 preview_info.append({
+#                     "name": track_json["name"],
+#                     "artist": track_json["artists"][0]["name"],
+#                     "preview_url": track_json["preview_url"],
+#                     "cover_url": track_json["album"]["images"][0]["url"] if track_json["album"]["images"] else None
+#                 })
 
-        # Create a set of unique hashtags (demo purpose: #YourDescription #AI)
-        hashtags = [f"#{description.replace(' ', '')}", "#cycles"]
+#         # Create a set of unique hashtags (demo purpose: #YourDescription #AI)
+#         hashtags = [f"#{description.replace(' ', '')}", "#cycles"]
 
-        return Response({
-            "new_playlist_id": new_playlist_id,
-            "new_playlist": new_playlist,
-            "recommended_tracks": preview_info,
-            "hashtags": hashtags,
-            "spotify_playlist_url": new_playlist["external_urls"]["spotify"]
-        }, status=200)
+#         return Response({
+#             "new_playlist_id": new_playlist_id,
+#             "new_playlist": new_playlist,
+#             "recommended_tracks": preview_info,
+#             "hashtags": hashtags,
+#             "spotify_playlist_url": new_playlist["external_urls"]["spotify"]
+#         }, status=200)
