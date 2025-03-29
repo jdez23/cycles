@@ -12,8 +12,8 @@ from users.models import Follow
 from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
 import logging
-import requests
 # import openai
+from django.db import transaction
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,6 @@ class PlaylistDetails(APIView):
 
             # Get the playlist object
             playlist = Playlist.objects.get(id=playlist_id)
-            # playlist_serializer = PlaylistDetailSerializer(playlist)
 
             # Check if the current user has liked the playlist
             is_liked = Like.objects.filter(
@@ -151,7 +150,8 @@ class PlaylistDetails(APIView):
                             "artist": track["artists"][0]["name"],
                             "album": track["album"]["name"],
                             "name": track["name"],
-                            "track_id": track["external_urls"]['spotify'],
+                            "track_id": track["id"],
+                            "track_url": track["external_urls"]["spotify"],
                             "uri": track["uri"],
                             "preview_url": track["preview_url"],
                             "images": track["album"]["images"][0]['url'],
@@ -172,6 +172,7 @@ class PlaylistDetails(APIView):
                     album=track['album'],
                     name=track['name'],
                     track_id=track['track_id'],
+                    track_url=track['track_url'],
                     uri=track['uri'],
                     preview_url=track['preview_url'],
                     images=track['images']
@@ -237,136 +238,6 @@ class MyPlaylists(APIView):
         except:
             return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
-    # def post(self, request):
-    #     serializer = PlaylistSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         try:
-    #             data = serializer.validated_data
-
-    #             # Create playlist
-    #             playlist = Playlist.objects.create(
-    #                 user=request.user,
-    #                 playlist_url=data["playlist_url"],
-    #                 playlist_ApiURL=data.get("playlist_ApiURL"),
-    #                 playlist_id=data["playlist_id"],
-    #                 playlist_cover=data.get("playlist_cover"),
-    #                 playlist_title=data["playlist_title"],
-    #                 playlist_description=data.get("playlist_description"),
-    #                 playlist_type=data.get("playlist_type"),
-    #                 playlist_uri=data.get("playlist_uri"),
-    #                 playlist_tracks=data.get('playlist_tracks')
-    #             )
-
-    #             # Add hashtags (tags)
-    #             playlist.hashtags.set(data["hashtags"])
-
-    #             # Get Spotify playlist tracks
-    #             endpoint = f'v1/playlists/{data["playlist_id"]}/tracks'
-    #             response = execute_spotify_api_request(request.user, endpoint)
-    #             if not response or "items" not in response:
-    #                 return Response({'error': 'Failed to retrieve Spotify tracks.'}, status=status.HTTP_502_BAD_GATEWAY)
-
-    #             # Save tracks
-    #             tracks = [
-    #                 PlaylistTracks(
-    #                     playlist=playlist,
-    #                     artist=item["track"]["artists"][0]["name"],
-    #                     album=item["track"]["album"]["name"],
-    #                     name=item["track"]["name"],
-    #                     track_id=item["track"]["external_urls"]["spotify"],
-    #                     uri=item["track"]["uri"],
-    #                     preview_url=item["track"]["preview_url"],
-    #                     images=item["track"]["album"]["images"][0]["url"],
-    #                 )
-    #                 for item in response["items"]
-    #                 if item["track"] and item["track"]["album"]["images"]
-    #             ]
-    #             PlaylistTracks.objects.bulk_create(tracks)
-
-    #             return Response({'success': 'Playlist and tracks added successfully.'}, status=status.HTTP_201_CREATED)
-
-    #         except Exception as e:
-    #             logger.exception("Error saving playlist and tracks", e)
-    #             return Response({'error': f'Failed to save playlist. {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    #     else:
-    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # def post(self, request):
-    #     serializer = PlaylistSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         try:
-    #             data = serializer.validated_data
-
-    #             # Create playlist
-    #             playlist = Playlist.objects.create(
-    #                 user=request.user,
-    #                 playlist_url=data["playlist_url"],
-    #                 playlist_ApiURL=data["playlist_ApiURL"],
-    #                 playlist_id=data["playlist_id"],
-    #                 playlist_cover=data["playlist_cover"],
-    #                 playlist_title=data["playlist_title"],
-    #                 playlist_description=data["playlist_description"],
-    #                 playlist_type=data["playlist_type"],
-    #                 playlist_uri=data["playlist_uri"],
-    #                 playlist_tracks=data["playlist_tracks"],
-    #             )
-
-    #             # Add hashtags (tags)
-    #             playlist.hashtags.set(data["hashtags"])
-
-    #             # Fetch and save tracks
-    #             endpoint = f'v1/playlists/{data["playlist_id"]}/tracks'
-    #             all_tracks = []
-    #             while endpoint:
-    #                 response = execute_spotify_api_request(
-    #                     request.user, endpoint)
-
-    #                 if not response or "items" not in response:
-    #                     break
-
-    #                 for item in response["items"]:
-    #                     try:
-    #                         all_tracks.append(
-    #                             PlaylistTracks(
-    #                                 playlist=playlist,
-    #                                 artist=item["track"]["artists"][0]["name"],
-    #                                 album=item["track"]["album"]["name"],
-    #                                 name=item["track"]["name"],
-    #                                 track_id=item["track"]["external_urls"]["spotify"],
-    #                                 uri=item["track"]["uri"],
-    #                                 preview_url=item["track"]["preview_url"],
-    #                                 images=item["track"]["album"]["images"][0]["url"],
-    #                             )
-    #                         )
-    #                     except (KeyError, IndexError) as e:
-    #                         logger.warning(
-    #                             f"Skipping track due to missing data: {e}")
-    #                         continue
-
-    #                 # Handle pagination
-    #                 endpoint = response.get("next")
-
-    #             # Save tracks in batches
-    #             batch_size = 100
-    #             for i in range(0, len(all_tracks), batch_size):
-    #                 PlaylistTracks.objects.bulk_create(
-    #                     all_tracks[i:i + batch_size])
-
-    #             return Response(
-    #                 {'success': f'Playlist and {len(all_tracks)} tracks added successfully.'},
-    #                 status=status.HTTP_201_CREATED,
-    #             )
-
-    #         except Exception as e:
-    #             logger.exception("Error saving playlist and tracks")
-    #             return Response(
-    #                 {'error': f'Failed to save playlist. {str(e)}'},
-    #                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #             )
-
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     def post(self, request):
         serializer = PlaylistSerializer(data=request.data)
         if serializer.is_valid():
@@ -421,7 +292,8 @@ class MyPlaylists(APIView):
                                     artist=track["artists"][0]["name"],
                                     album=track["album"]["name"],
                                     name=track["name"],
-                                    track_id=track["external_urls"]["spotify"],
+                                    track_id=track["id"],
+                                    track_url=track["external_urls"]["spotify"],
                                     uri=track["uri"],
                                     preview_url=track["preview_url"],
                                     images=track["album"]["images"][0]["url"] if track["album"]["images"] else "",
@@ -646,7 +518,7 @@ class SearchView(generics.ListAPIView):
         return combined_results
 
 
-# Get playlist description from Spotify
+# Update playlist track_id and track_url from Spotify
 class GetDescription(APIView):
     queryset = Playlist.objects.all()
 

@@ -39,6 +39,7 @@ class PlaylistTracks(models.Model):
     artist = models.CharField(max_length=300, default='')
     album = models.CharField(max_length=300, default='')
     track_id = models.CharField(max_length=300, default='')
+    track_url = models.CharField(max_length=1000, default='')
     uri = models.CharField(max_length=300, default='')
     preview_url = models.CharField(default='')
     images = models.CharField(max_length=700, default='')
