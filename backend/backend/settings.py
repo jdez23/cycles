@@ -196,8 +196,6 @@ STORAGES = {
     },
 }
 
-# Optionally, set MEDIA_URL to include the location if needed:
 MEDIA_URL = f'https://cyclesapp.s3.amazonaws.com/media/'
-# OPEN_AI_KEY = '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'
 
 django_heroku.settings(locals(), staticfiles=False)
