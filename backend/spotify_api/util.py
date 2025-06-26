@@ -1,7 +1,7 @@
 from django.utils import timezone
 from datetime import timedelta
 from .credentials import *
-from requests import post, get
+from requests import post, get, put
 from .models import SpotifyToken
 
 BASE_URL = "https://api.spotify.com/"
@@ -74,6 +74,8 @@ def refresh_spotify_token(user):
 
 
 def execute_spotify_api_request(user, endpoint, post_=False):
+    # Ensure token is valid (refresh if needed)
+    is_spotify_authenticated(user)
     access_token = get_user_tokens(user).access_token
     headers = {'Authorization': "Bearer " + access_token}
 
@@ -88,7 +90,24 @@ def execute_spotify_api_request(user, endpoint, post_=False):
         return {'Error': 'Issue with request'}
 
 
+def execute_add_track_request(user, endpoint):
+    # Ensure token is valid (refresh if needed)
+    is_spotify_authenticated(user)
+    access_token = get_user_tokens(user).access_token
+    headers = {'Authorization': "Bearer " + access_token}
+    url = BASE_URL + endpoint
+
+    response = put(url, headers=headers)
+
+    try:
+        return response.json()
+    except Exception as e:
+        return {'Error': 'Issue with request'}
+
+
 def execute_spotify_playlist_request(user, endpoint, params, post_=False):
+    # Ensure token is valid (refresh if needed)
+    is_spotify_authenticated(user)
     access_token = get_user_tokens(user).access_token
     headers = {'Authorization': "Bearer " + access_token}
 

@@ -8,6 +8,7 @@ urlpatterns = [
     path('spotify_login/', LoginSpotify.as_view()),
     path('spotify_logout/', SpotifyLogout.as_view()),
     path('token/', IsSpotifyAuthenticated.as_view()),
+    path('add-track/', AddSongToLikedPlaylist.as_view()),
     path('spotify-playlist/', SpotifyPlaylist.as_view()),
     path('spotify-playlist-tracks/', SpotifyPlaylistTracks.as_view()),
 ]

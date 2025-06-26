@@ -167,19 +167,19 @@ class SpotifyPlaylistTracks(APIView):
             logger.exception("-------", e)
 
 
-# class AddSongToLikedPlaylist(APIView):
-#     def post(self, request):
-#         try:
-#             user = self.request.user
-#             spotify_playlist_id = request.GET.get('playlist_id')
-#             track_id = request.GET.get('track_id')
+class AddSongToLikedPlaylist(APIView):
+    def put(self, request):
+        try:
+            user = self.request.user
+            track_id = request.data.get('track_id')
+            endpoint = f"v1/me/tracks?ids={track_id}"
 
-#             endpoint = 'v1/playlists/'+spotify_playlist_id+"/tracks"
-#             execute_spotify_api_request(user, endpoint)
+            execute_add_track_request(user, endpoint)
 
-#             return Response('true', status=status.HTTP_200_OK)
-#         except Exception as e:
-#             logger.exception("-------", e)
+            return Response({"message": "Added!"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception("Error adding track to liked playlist")
+            return Response({"error": "Something went wrong."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SpotifySearch(APIView):
