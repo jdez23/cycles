@@ -1090,3 +1090,642 @@ freezegun==1.5.1       # mock timezone.now() for token expiry tests
 | **Phase 3 — Quality** | §4.5–4.22, §5.1–5.4 | Code is clean and maintainable |
 | **Phase 4 — Testing** | §6.1–6.3 | Regression protection |
 | **Phase 5 — Infrastructure** | §7 | Production-ready scale |
+| **Phase 6 — File Structure** | §9 | Clean, standard Django project layout |
+| **Phase 7 — Apple Music** | §12 | Apple Music parity with Spotify |
+
+---
+
+## 9. File Structure
+
+The current layout has several structural problems that deviate from Django conventions and best practices.
+
+### 9.1 Current Problems
+
+**`firebase/` is listed in `INSTALLED_APPS` but is not a Django app**
+
+`firebase/` has no `models.py`, `admin.py`, `apps.py`, `migrations/`, or `urls.py`. Django will attempt to call `AppConfig.ready()` on it and may emit warnings. It is a utility module masquerading as an app. It should become a plain Python package named `core/` and be removed from `INSTALLED_APPS`.
+
+**`users/email/` is an unnecessary sub-package**
+
+The `users/email/` directory contains `views.py`, `serializers.py`, and `urls.py` for exactly one endpoint — the contact form. It also contains two duplicate implementations of the same view (`send_contact_message` function-based + `ContactView` class-based). Everything here belongs directly in the `users/` app.
+
+**`storage_backend.py` at the project root is unused**
+
+This file defines `MediaStorage(S3Boto3Storage)` but S3 is already configured inline in `settings.py`'s `STORAGES` dict. It is never imported anywhere. Delete it.
+
+**`credentials.py` files inside app directories**
+
+`spotify_api/credentials.py` and `notifications/credentials.py` hold API keys imported via `from .credentials import *`. Credentials should never live as Python modules inside app packages. They belong in `settings.py` loaded from `os.environ`, or in a secrets manager.
+
+**`media/` directory is tracked in git**
+
+`media/avi/default_avi.jpg` (the default avatar) is committed. The `media/` directory is for user-uploaded content and should be gitignored. The default avatar static asset should be stored in `static/img/` or on S3, not in the media upload directory.
+
+**`requirements.txt` has conflicting and misplaced dependencies**
+
+- Both `psycopg2==2.9.9` and `psycopg2-binary==2.9.9` are installed — these conflict. Use only one: `psycopg2-binary` for development, compiled `psycopg2` for production (or use `psycopg2-binary` everywhere and document the trade-off).
+- `autopep8==2.3.1` is a dev-only code formatter mixed with production dependencies.
+- `python-environ==0.4.54` is a little-known package that appears unused — `settings.py` uses `os.environ` directly and `python-dotenv` is already present for `.env` file loading.
+- `google-cloud-firestore==2.17.2` — the Firebase Admin SDK is used, but Cloud Firestore directly is never called. Likely an unnecessary 10+ transitive dependency chain.
+
+**`spotify_api/util.py` vs `notifications/utils.py` — inconsistent naming**
+
+Django convention is `utils.py`. `util.py` is non-standard and inconsistent with the rest of the project.
+
+**URL configs use `from .views import *` everywhere**
+
+`users/urls.py`, `feed/urls.py`, `notifications/urls.py`, and `spotify_api/urls.py` all use wildcard imports. This makes it impossible to know which views are available without reading all view files.
+
+**`users/urls.py` applies permissions via inline decorator factories**
+
+```python
+path('register/', authentication_classes([])(permission_classes([AllowAny])(CreateUser)).as_view())
+```
+
+This is fragile and non-standard. Permissions and authentication classes should be set as class attributes on the view itself:
+```python
+class CreateUser(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+```
+
+**URL prefix `spotify_api/` uses underscore**
+
+REST API URL conventions use hyphens or plain names — not underscores. Should be `/api/v1/spotify/` once versioning is added.
+
+**No `tests/` directory — test files are co-located empty placeholders**
+
+Four empty `tests.py` files exist, one per app, with no `conftest.py`, `pytest.ini`, or fixture factories. Tests should live in a structured `tests/` directory at the project level.
+
+---
+
+### 9.2 Recommended Target Structure
+
+```
+cycles/
+├── .gitignore                       ← add media/, __pycache__, *.pyc
+├── README.md                        ← NEW (see §10)
+├── CLAUDE.md                        ← NEW (see §11)
+└── backend/
+    ├── manage.py
+    ├── Procfile
+    ├── runtime.txt
+    ├── requirements.txt             ← production only
+    ├── requirements-dev.txt         ← NEW: dev/test tools
+    ├── pytest.ini                   ← NEW
+    ├── backend/
+    │   ├── __init__.py
+    │   ├── urls.py                  ← add health check, api/v1/ prefix
+    │   ├── wsgi.py
+    │   ├── asgi.py
+    │   └── settings/                ← SPLIT from settings.py
+    │       ├── __init__.py
+    │       ├── base.py
+    │       ├── development.py
+    │       └── production.py
+    ├── core/                        ← RENAMED from firebase/ (removed from INSTALLED_APPS)
+    │   ├── __init__.py
+    │   ├── authentication.py        ← FirebaseAuthentication (with verify_id_token fix)
+    │   ├── exceptions.py            ← NoAuthToken, InvalidAuthToken, FirebaseError
+    │   ├── responses.py             ← NEW: error_response(), success_response() helpers
+    │   └── utils.py                 ← merge firebase/utils.py here
+    ├── users/
+    │   ├── __init__.py
+    │   ├── models.py
+    │   ├── views.py                 ← absorb ContactView from email/views.py
+    │   ├── urls.py                  ← absorb email/urls.py; fix permission pattern
+    │   ├── serializers.py           ← absorb ContactMessageSerializer from email/serializers.py
+    │   ├── services.py              ← NEW: create_user(), follow_user(), etc.
+    │   ├── admin.py
+    │   ├── apps.py
+    │   └── migrations/
+    ├── feed/
+    │   ├── __init__.py
+    │   ├── models.py
+    │   ├── views.py
+    │   ├── urls.py
+    │   ├── serializers.py
+    │   ├── services.py              ← NEW: playlist CRUD, source-aware track sync dispatch
+    │   ├── admin.py
+    │   ├── apps.py
+    │   └── migrations/
+    ├── spotify_api/
+    │   ├── __init__.py
+    │   ├── models.py
+    │   ├── views.py
+    │   ├── urls.py
+    │   ├── serializers.py
+    │   ├── utils.py                 ← RENAMED from util.py; 3 request fns consolidated to 1
+    │   ├── permissions.py
+    │   ├── services.py              ← NEW: token refresh, fetch_and_store_tracks()
+    │   ├── admin.py
+    │   ├── apps.py
+    │   └── migrations/
+    ├── apple_music/                 ← NEW (see §12)
+    │   ├── __init__.py
+    │   ├── models.py
+    │   ├── views.py
+    │   ├── urls.py
+    │   ├── serializers.py
+    │   ├── utils.py
+    │   ├── permissions.py
+    │   ├── services.py
+    │   ├── admin.py
+    │   ├── apps.py
+    │   └── migrations/
+    ├── notifications/
+    │   ├── __init__.py
+    │   ├── models.py
+    │   ├── views.py
+    │   ├── urls.py
+    │   ├── serializers.py
+    │   ├── utils.py
+    │   ├── services.py              ← NEW: FCM HTTP v1 send logic
+    │   ├── admin.py
+    │   ├── apps.py
+    │   └── migrations/
+    └── tests/                       ← NEW: top-level structured test directory
+        ├── conftest.py
+        ├── factories.py
+        ├── users/
+        │   ├── test_auth.py
+        │   ├── test_profile.py
+        │   └── test_follow.py
+        ├── feed/
+        │   ├── test_playlists.py
+        │   └── test_search.py
+        ├── spotify_api/
+        │   └── test_utils.py
+        ├── apple_music/
+        │   └── test_utils.py
+        └── notifications/
+            └── test_notifications.py
+```
+
+---
+
+### 9.3 Files to Delete
+
+| File | Reason |
+|---|---|
+| `storage_backend.py` | Unused; S3 already configured in `settings.py` |
+| `spotify_api/credentials.py` | Credentials → `os.environ` via `settings.py` |
+| `notifications/credentials.py` | Credentials → `os.environ` via `settings.py` |
+| `users/email/views.py` | Merge `ContactView` into `users/views.py` |
+| `users/email/serializers.py` | Merge `ContactMessageSerializer` into `users/serializers.py` |
+| `users/email/urls.py` | Merge contact URL into `users/urls.py` |
+| `users/email/__init__.py` | Sub-package dissolved |
+| `media/avi/default_avi.jpg` | Move to `static/img/` or host on S3; add `media/` to `.gitignore` |
+
+---
+
+### 9.4 Files to Rename
+
+| From | To | Reason |
+|---|---|---|
+| `firebase/` directory | `core/` directory | Not a Django app; utility module; remove from `INSTALLED_APPS` |
+| `spotify_api/util.py` | `spotify_api/utils.py` | Django convention |
+| `backend/settings.py` | `backend/settings/base.py` | Split into dev/prod settings package |
+
+---
+
+### 9.5 `requirements.txt` Cleanup
+
+**Remove from `requirements.txt`:**
+- `psycopg2==2.9.9` — conflicts with `psycopg2-binary`; keep only one
+- `autopep8==2.3.1` — dev tool, move to `requirements-dev.txt`
+- `python-environ==0.4.54` — unused; `python-dotenv` already handles `.env` loading
+- `google-cloud-firestore==2.17.2` — not used directly; only Firebase Admin SDK is needed
+
+**Create `requirements-dev.txt`:**
+```
+autopep8
+pytest-django
+factory-boy
+pytest-mock
+responses
+freezegun
+```
+
+---
+
+## 10. README.md
+
+The repository has no `README.md`. Create `/home/user/cycles/README.md`:
+
+```markdown
+# Cycles
+
+Social playlist-sharing app. Users connect their Spotify or Apple Music accounts,
+share playlists, follow other users, and like and comment on playlists.
+
+## Tech Stack
+
+- **Backend:** Django 5.1, Django REST Framework, PostgreSQL
+- **Auth:** Firebase Authentication
+- **Storage:** AWS S3 (media + static files)
+- **Push Notifications:** Firebase Cloud Messaging (FCM HTTP v1)
+- **Music:** Spotify Web API, Apple Music API (MusicKit)
+- **Hosting:** Heroku
+
+## Prerequisites
+
+- Python 3.12
+- PostgreSQL
+- Firebase project (service account)
+- Spotify Developer App
+- Apple Developer account with MusicKit enabled
+- AWS S3 bucket
+
+## Local Setup
+
+\`\`\`bash
+git clone <repo>
+cd cycles/backend
+python -m venv env && source env/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+cp .env.example .env        # fill in values
+python manage.py migrate
+python manage.py runserver
+\`\`\`
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | Django secret key |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `FIREBASE_CREDENTIALS_JSON` | Firebase service account JSON (stringified) |
+| `AWS_ACCESS_KEY_ID` | AWS access key |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
+| `AWS_STORAGE_BUCKET_NAME` | S3 bucket name |
+| `AWS_S3_REGION_NAME` | S3 region |
+| `SPOTIFY_CLIENT_ID` | Spotify app client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app client secret |
+| `SPOTIFY_REDIRECT_URL` | Spotify OAuth redirect URI |
+| `APPLE_MUSIC_PRIVATE_KEY` | Apple MusicKit `.p8` key contents |
+| `APPLE_MUSIC_KEY_ID` | Apple MusicKit key ID |
+| `APPLE_MUSIC_TEAM_ID` | Apple Developer Team ID |
+| `APPLE_MUSIC_STOREFRONT` | Apple Music storefront (e.g. `us`) |
+| `FCM_CREDENTIALS` | FCM server key |
+| `EMAIL_HOST` | SMTP host |
+| `EMAIL_PORT` | SMTP port |
+| `EMAIL_HOST_USER` | SMTP user |
+| `EMAIL_HOST_PASSWORD` | SMTP password |
+
+## API Endpoints
+
+| Prefix | App |
+|---|---|
+| `/api/v1/users/` | User profiles, auth, follow |
+| `/api/v1/feed/` | Playlists, likes, comments, search |
+| `/api/v1/spotify/` | Spotify OAuth and playlist fetch |
+| `/api/v1/apple-music/` | Apple Music token and playlist fetch |
+| `/api/v1/notifications/` | FCM tokens, push notifications |
+| `/health/` | Health check |
+
+## Running Tests
+
+\`\`\`bash
+cd backend && pytest
+\`\`\`
+
+## Deployment
+
+Heroku deployment. Set all environment variables in Heroku config vars.
+Static files are served from S3. Media files are stored in S3.
+```
+
+---
+
+## 11. CLAUDE.md
+
+Create `/home/user/cycles/CLAUDE.md` at the repository root to give Claude Code persistent context about this project:
+
+```markdown
+# Cycles — Claude Code Context
+
+## Project Overview
+
+Django REST API backend for Cycles, a social playlist-sharing app.
+Users connect Spotify and Apple Music, share playlists, follow each other,
+like and comment. Firebase handles authentication; AWS S3 handles media storage.
+
+## Directory Map
+
+| Directory | Purpose |
+|---|---|
+| `backend/backend/` | Django settings package, root URL config |
+| `backend/core/` | Firebase auth class, shared exceptions, response helpers |
+| `backend/users/` | User model, Follow, Subscription, contact email |
+| `backend/feed/` | Playlist, PlaylistTracks, Like, Comment models; discover/following feed |
+| `backend/spotify_api/` | Spotify OAuth, playlist/track fetch |
+| `backend/apple_music/` | Apple Music developer token, user token, playlist/track fetch |
+| `backend/notifications/` | FCM tokens, Notification model, push via FCM HTTP v1 |
+| `backend/tests/` | All tests, factories, fixtures |
+
+## Authentication
+
+All endpoints require a Firebase ID token in the `Authorization` header.
+`FirebaseAuthentication` in `core/authentication.py` calls `auth.verify_id_token()`.
+Public endpoints set `authentication_classes = []` and `permission_classes = [AllowAny]`
+directly on the view class — never via URL config decorators.
+
+## Music Integration Pattern
+
+Both Spotify and Apple Music follow the same server-side flow:
+1. Client authenticates with the music service and sends token(s) to backend
+2. Backend stores token in `SpotifyToken` / `AppleMusicToken`
+3. `GET /playlists/` returns user's music service playlists not yet shared on Cycles
+4. `GET /playlist-tracks/` returns tracks for a given playlist
+5. `POST /feed/my-playlists/` triggers async track sync via Celery
+
+## Key Conventions
+
+- **No wildcard imports.** Always use explicit imports.
+- **Paginate querysets, not serialized data.** Call `paginator.paginate_queryset(queryset, request)` before serializing.
+- **Always use `select_related`/`prefetch_related`** on querysets that feed serializers with nested foreign key access.
+- **Business logic belongs in `services.py`**, not in views. Views handle HTTP; services handle logic.
+- **Long-running tasks use Celery.** Never call Spotify or Apple Music APIs synchronously during POST requests.
+- **All credentials from `os.environ`.** Never commit credential files or hardcode keys.
+- **Consistent error format:** `{'error': 'message'}` with appropriate HTTP status code.
+- **Log with `logger.exception(...)`.** Never use `print()`.
+- **`permission_classes`** (plural) — not `permission_class`. The typo silently disables the check.
+
+## Database
+
+PostgreSQL. Run `python manage.py migrate` after any model change.
+`CONN_MAX_AGE = 60` for connection pooling.
+
+## Do Not
+
+- Commit `firebase-config.json`, `.env`, `.p8` files, or any credentials
+- Use `from .models import *` or `from .serializers import *`
+- Add `order_by('?')` — use indexed random sampling or a cached shuffled list
+- Put business logic directly in views
+- Make synchronous external API calls inside POST/PUT view handlers
+- Use the FCM Legacy API (`fcm.googleapis.com/fcm/send`) — it was shut down June 2024
+```
+
+---
+
+## 12. Apple Music Integration
+
+### Overview
+
+Add Apple Music playlist sharing that mirrors the existing Spotify flow end-to-end.
+Users connect their Apple Music account, browse their library playlists, pick one,
+and post it to Cycles exactly as they do with Spotify. The same `Playlist`,
+`PlaylistTracks`, `Like`, `Comment`, and feed endpoints serve both sources.
+
+A new `source` field on `Playlist` distinguishes origin. Track-fetching logic
+in `feed/services.py` dispatches to the appropriate music service based on this field.
+
+---
+
+### New App: `apple_music/`
+
+Structure mirrors `spotify_api/` exactly:
+
+```
+backend/apple_music/
+├── __init__.py
+├── models.py        ← AppleMusicToken
+├── views.py         ← 6 API views
+├── urls.py
+├── serializers.py
+├── utils.py         ← developer token generation, API request helper
+├── services.py      ← token management, fetch_and_store_tracks()
+├── permissions.py   ← HasAppleMusicToken
+├── admin.py
+├── apps.py
+└── migrations/
+```
+
+Add `'apple_music'` to `INSTALLED_APPS` in `settings/base.py`.
+Add `path('apple-music/', include('apple_music.urls'))` to root `urls.py`.
+
+---
+
+### Model
+
+```python
+# apple_music/models.py
+class AppleMusicToken(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_index=True,
+        unique=True,  # one token per user
+    )
+    music_user_token = models.CharField(max_length=3000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"AppleMusicToken(user={self.user_id})"
+```
+
+Apple Music user tokens do not expire server-side — MusicKit JS renews them
+on the client as needed. No `expires_in` field is required.
+
+---
+
+### Auth Flow
+
+Apple Music uses **MusicKit JS** (client-side) instead of a server-side OAuth redirect:
+
+1. Client requests Apple Developer Token from `GET /apple-music/developer-token/`
+2. Client initializes MusicKit JS with the developer token
+3. Client calls `music.authorize()` — Apple handles the auth UI natively
+4. MusicKit JS returns a `musicUserToken` string to the client
+5. Client POSTs `musicUserToken` to `POST /apple-music/login/`
+6. Server stores the token linked to the authenticated user
+
+The server **never handles an OAuth redirect** — only token storage.
+
+---
+
+### Apple Developer Token
+
+A short-lived JWT (up to 6 months) signed with an ES256 private key from
+Apple Developer Portal → Certificates, Identifiers & Profiles → Keys → MusicKit.
+
+```python
+# apple_music/utils.py
+import jwt
+import time
+import os
+from django.core.cache import cache
+
+DEVELOPER_TOKEN_CACHE_KEY = 'apple_music_developer_token'
+
+def generate_developer_token() -> str:
+    cached = cache.get(DEVELOPER_TOKEN_CACHE_KEY)
+    if cached:
+        return cached
+    private_key = os.environ['APPLE_MUSIC_PRIVATE_KEY']
+    key_id = os.environ['APPLE_MUSIC_KEY_ID']
+    team_id = os.environ['APPLE_MUSIC_TEAM_ID']
+    now = int(time.time())
+    expiry = 15777000  # ~6 months in seconds
+    payload = {'iss': team_id, 'iat': now, 'exp': now + expiry}
+    token = jwt.encode(payload, private_key, algorithm='ES256',
+                       headers={'kid': key_id})
+    cache.set(DEVELOPER_TOKEN_CACHE_KEY, token, timeout=expiry - 86400)  # expire 1 day early
+    return token
+
+def get_apple_music_headers(user) -> dict:
+    """Returns auth headers for Apple Music API calls."""
+    from .models import AppleMusicToken
+    token_obj = AppleMusicToken.objects.get(user=user)
+    return {
+        'Authorization': f'Bearer {generate_developer_token()}',
+        'Music-User-Token': token_obj.music_user_token,
+    }
+
+def execute_apple_music_request(user, endpoint: str, params: dict = None) -> dict:
+    import requests
+    import logging
+    logger = logging.getLogger(__name__)
+    headers = get_apple_music_headers(user)
+    url = f'https://api.music.apple.com/{endpoint}'
+    response = requests.get(url, headers=headers, params=params)
+    try:
+        return response.json()
+    except ValueError:
+        logger.error("Non-JSON Apple Music response: %s %s", response.status_code, url)
+        return {'error': 'Invalid response from Apple Music'}
+```
+
+---
+
+### New Environment Variables
+
+| Variable | Description |
+|---|---|
+| `APPLE_MUSIC_PRIVATE_KEY` | Full contents of the `.p8` private key file |
+| `APPLE_MUSIC_KEY_ID` | 10-character key identifier from Apple Developer Portal |
+| `APPLE_MUSIC_TEAM_ID` | 10-character Apple Developer Team ID |
+| `APPLE_MUSIC_STOREFRONT` | Storefront code for catalog lookups (e.g. `us`) |
+
+---
+
+### API Endpoints
+
+| URL | Method | Auth | Description |
+|---|---|---|---|
+| `/apple-music/developer-token/` | GET | AllowAny | Return cached Apple Developer JWT |
+| `/apple-music/login/` | POST | IsAuthenticated | Store `musicUserToken` for current user |
+| `/apple-music/token/` | GET | IsAuthenticated | Check if current user is Apple Music authenticated |
+| `/apple-music/logout/` | DELETE | IsAuthenticated | Delete stored token |
+| `/apple-music/playlists/` | GET | HasAppleMusicToken | List library playlists not yet shared on Cycles |
+| `/apple-music/playlist-tracks/` | GET | HasAppleMusicToken | Get tracks for a given playlist ID |
+
+---
+
+### Apple Music API Reference
+
+**Base URL:** `https://api.music.apple.com`
+
+**Required headers on every call:**
+```
+Authorization: Bearer {developer_token}
+Music-User-Token: {music_user_token}
+```
+
+**Get user's library playlists (paginated):**
+```
+GET /v1/me/library/playlists?limit=25&offset=0
+```
+Response: `data[].id`, `data[].attributes.name`, `data[].attributes.artwork`
+
+**Get tracks for a library playlist (paginated):**
+```
+GET /v1/me/library/playlists/{id}/tracks?limit=100
+```
+Response: `data[].attributes.name`, `data[].attributes.artistName`, `data[].attributes.albumName`, `data[].attributes.playParams.catalogId`
+
+**Preview URLs** — library tracks do not include preview URLs. Cross-reference via catalog:
+```
+GET /v1/catalog/{storefront}/songs/{catalogId}
+```
+Response: `data[0].attributes.previews[0].url` — 30-second preview MP3.
+
+Only store tracks where a preview URL exists (same filter as Spotify integration).
+
+---
+
+### Feed Model Change
+
+Add `source` field to `Playlist` (requires migration):
+
+```python
+# feed/models.py
+class Playlist(models.Model):
+    SOURCE_SPOTIFY = 'spotify'
+    SOURCE_APPLE = 'apple_music'
+    SOURCE_CHOICES = [
+        (SOURCE_SPOTIFY, 'Spotify'),
+        (SOURCE_APPLE, 'Apple Music'),
+    ]
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_SPOTIFY,
+        db_index=True,
+    )
+    # ... existing fields unchanged
+```
+
+---
+
+### Track Sync Dispatch in `feed/services.py`
+
+```python
+# feed/services.py
+def fetch_and_store_tracks(playlist: Playlist, user) -> int:
+    """Dispatches to the correct music service based on playlist.source."""
+    if playlist.source == Playlist.SOURCE_SPOTIFY:
+        from spotify_api.services import fetch_spotify_tracks
+        return fetch_spotify_tracks(playlist, user)
+    elif playlist.source == Playlist.SOURCE_APPLE:
+        from apple_music.services import fetch_apple_music_tracks
+        return fetch_apple_music_tracks(playlist, user)
+    raise ValueError(f"Unknown playlist source: {playlist.source}")
+```
+
+---
+
+### Celery Task for Async Track Sync
+
+```python
+# feed/tasks.py
+from celery import shared_task
+from .models import Playlist
+from .services import fetch_and_store_tracks
+from users.models import User
+
+@shared_task(bind=True, max_retries=3)
+def sync_playlist_tracks(self, playlist_id: int, user_id: int):
+    try:
+        playlist = Playlist.objects.get(id=playlist_id)
+        user = User.objects.get(id=user_id)
+        count = fetch_and_store_tracks(playlist, user)
+        return {'playlist_id': playlist_id, 'tracks_synced': count}
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=30)
+```
+
+---
+
+### Differences vs Spotify
+
+| Aspect | Spotify | Apple Music |
+|---|---|---|
+| Auth flow | Server-side OAuth redirect | Client-side MusicKit JS |
+| Server token work | Exchange code → access + refresh tokens | Generate developer JWT; store user token |
+| Token refresh | Server auto-refreshes when expired | Client handles; server just stores latest |
+| Preview URLs | Included in track response | Separate catalog API lookup per track |
+| Playlist scope | Public + private playlists | Library playlists only |
+| Pagination | `next` URL in response | `next` URL in response (same pattern) |
+| Dependencies | None new | None new (PyJWT + cryptography already present) |
