@@ -1,63 +1,61 @@
-import os
-from .models import *
 from rest_framework import serializers
-from google.oauth2 import service_account
-# from django.conf import settings
+
+from .models import FcmToken, Notification
 
 
-class fcmTokenSerializer(serializers.ModelSerializer):
+class FcmTokenSerializer(serializers.ModelSerializer):
     class Meta:
-        model = fcmToken
-        fields = "__all__"
+        model = FcmToken
+        fields = '__all__'
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    playlist_url = serializers.SerializerMethodField('get_playlist_url')
-    playlist_cover = serializers.SerializerMethodField('get_playlist_cover')
-    playlist_title = serializers.SerializerMethodField('get_playlist_title')
-    username = serializers.SerializerMethodField('get_username_from_user')
-    avi_pic = serializers.SerializerMethodField('get_avi_pic')
-    image = serializers.SerializerMethodField('get_image')
+    playlist_url = serializers.SerializerMethodField()
+    playlist_cover = serializers.SerializerMethodField()
+    playlist_title = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
+    avi_pic = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = "__all__"
+        fields = '__all__'
 
-    def get_username_from_user(self, notification):
-        username = notification.from_user.username
-        return username
+    def get_username(self, notification):
+        if notification.from_user:
+            return notification.from_user.username
+        return None
 
     def get_playlist_title(self, notification):
         if notification.comment:
             try:
-                playlist_title = notification.comment.playlist.playlist_title
-                return playlist_title
-            except:
+                return notification.comment.playlist.playlist_title
+            except Exception:
                 return None
+        return None
 
     def get_playlist_cover(self, notification):
         if notification.comment:
             try:
-                playlist_cover = notification.comment.playlist.playlist_cover
-                return playlist_cover
-            except:
+                return notification.comment.playlist.playlist_cover
+            except Exception:
                 return None
+        return None
 
     def get_playlist_url(self, notification):
         if notification.comment:
             try:
-                playlist_url = notification.comment.playlist.playlist_url
-                return playlist_url
-            except:
+                return notification.comment.playlist.playlist_url
+            except Exception:
                 return None
+        return None
 
     def get_avi_pic(self, notification):
-        avi_pic = notification.from_user.avi_pic
-        if avi_pic:
-            return avi_pic.url
+        if notification.from_user and notification.from_user.avi_pic:
+            return notification.from_user.avi_pic.url
         return None
 
     def get_image(self, notification):
         if notification.image:
-            return notification.image.url
+            return notification.image
         return None

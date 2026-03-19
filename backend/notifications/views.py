@@ -1,145 +1,126 @@
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
+import logging
+
+from firebase_admin import messaging
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .credentials import *
-from .serializers import *
-from .utils import *
-from .models import *
-import json
-import requests
-import logging
+from core.responses import error_response
+from feed.models import Comment, Like
+from users.models import Follow, User
+from .models import FcmToken, Notification
+from .serializers import FcmTokenSerializer, NotificationSerializer
+from .utils import get_update_or_create_fcm_token
 
 logger = logging.getLogger(__name__)
 
-# Create your views here.
 
-# (Post/Update) & Delete fcmToken
-
-
-class fcmTokenView(APIView):
-    serializer_class = fcmTokenSerializer
-    queryset = fcmToken.objects.all()
+class FcmTokenView(APIView):
 
     def post(self, request):
         try:
-            user = self.request.user
             token = request.data.get('token')
-            fcm_token = get_update_or_create_fcm_token(user, token)
-            serializer = fcmTokenSerializer(fcm_token)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+            if not token:
+                return error_response('token is required.')
+            fcm_token = get_update_or_create_fcm_token(request.user, token)
+            return Response(FcmTokenSerializer(fcm_token).data, status=status.HTTP_201_CREATED)
+        except Exception:
+            logger.exception("Error saving FCM token")
+            return error_response('An unexpected error occurred.', status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
         try:
-            user = self.request.user
-            print(user)
-            try:
-                token = fcmToken.objects.get(user=user)
-                if token:
-                    return Response(token.delete(), status=status.HTTP_200_OK)
-            except fcmToken.DoesNotExist:
-                return Response('no token', status=status.HTTP_200_OK)
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+            FcmToken.objects.filter(user=request.user).delete()
+            return Response(status=status.HTTP_200_OK)
+        except Exception:
+            logger.exception("Error deleting FCM token")
+            return error_response('An unexpected error occurred.', status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Get & Delete notifications
 class NotificationView(APIView):
-    serializer_class = NotificationSerializer
-    queryset = Notification.objects.all()
 
     def post(self, request):
         try:
-            user = self.request.user
-            to_user = request.data.get('to_user')
-            title = request.data.get('title')
-            image = request.data.get('image')
-            body = request.data.get('body')
-            playlist_id = request.data.get('playlist_id')
-            type = request.data.get('type')
-            comment = request.data.get('comment')
-            follow = request.data.get('follow')
-            like = request.data.get('like')
+            user = request.user
+            to_user_id = request.data.get('to_user')
+            title = request.data.get('title', '')
+            image = request.data.get('image', '')
+            body = request.data.get('body', '')
+            playlist_id = request.data.get('playlist_id', '')
+            notification_type = request.data.get('type', '')
+            comment_id = request.data.get('comment')
+            follow_id = request.data.get('follow')
+            like_id = request.data.get('like')
 
-            to_user = User.objects.get(id=to_user)
+            to_user = User.objects.get(id=to_user_id)
 
-            if user.id != to_user.id:
+            if user.id == to_user.id:
+                return Response(status=status.HTTP_200_OK)
 
-                if type == 'follow':
-                    follow = Follow.objects.get(id=follow)
-                    notification = Notification(from_user=user, to_user=to_user, title=title,
-                                                image='', body=body, type=type, follow=follow)
-                    notification.save()
+            notification_kwargs = dict(
+                from_user=user, to_user=to_user,
+                title=title, image=image, body=body,
+                playlist_id=playlist_id, type=notification_type,
+            )
 
-                elif type == 'like':
-                    like = Like.objects.get(id=like)
-                    notification = Notification(from_user=user, to_user=to_user, title=title,
-                                                image=image, body=body, playlist_id=playlist_id, type=type, like=like)
-                    notification.save()
+            if notification_type == 'follow':
+                notification_kwargs['follow'] = Follow.objects.get(id=follow_id)
+                notification_kwargs['image'] = ''
+            elif notification_type == 'like':
+                notification_kwargs['like'] = Like.objects.get(id=like_id)
+            elif notification_type == 'comment':
+                notification_kwargs['comment'] = Comment.objects.get(id=comment_id)
 
-                elif type == 'comment':
-                    comment = Comment.objects.get(id=comment)
-                    notification = Notification(from_user=user, to_user=to_user, title=title,
-                                                image=image, body=body, playlist_id=playlist_id, type=type, comment=comment)
+            Notification.objects.create(**notification_kwargs)
 
-                    notification.save()
+            try:
+                device_token = FcmToken.objects.get(user=to_user).token
+                message = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=f"{user.username} {body}",
+                    ),
+                    token=device_token,
+                )
+                messaging.send(message)
+            except FcmToken.DoesNotExist:
+                pass
+            except Exception:
+                logger.exception("Failed to send FCM push notification to user %s", to_user.id)
 
-                try:
-                    deviceToken = fcmToken.objects.get(user=to_user).token
-                    url = "https://fcm.googleapis.com/fcm/send"
-
-                    payload = json.dumps({
-                        "data": {},
-                        "notification": {
-                            "title": title,
-                            "body": user.username + " " + body
-                        },
-                        "to": deviceToken
-                    })
-                    headers = {
-                        'Authorization': 'key='+FCM_CREDENTIALS,
-                        'Content-Type': 'application/json'
-                    }
-
-                    if deviceToken:
-                        requests.request(
-                            "POST", url, headers=headers, data=payload)
-
-                    else:
-                        None
-                except fcmToken.DoesNotExist:
-                    None
-
-                return Response(status=status.HTTP_201_CREATED)
-            return Response(status=200)
-        except Exception as e:
-            logger.exception("-------", e)
+            return Response(status=status.HTTP_201_CREATED)
+        except User.DoesNotExist:
+            return error_response('User not found.', status.HTTP_404_NOT_FOUND)
+        except Exception:
+            logger.exception("Error creating notification")
+            return error_response('An unexpected error occurred.', status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
-            user = self.request.user
-            notification = Notification.objects.filter(
-                to_user=user).order_by('-date')
-            serializer = NotificationSerializer(notification, many=True)
+            notifications = Notification.objects.filter(
+                to_user=request.user
+            ).select_related('from_user').order_by('-date')
 
-            # Implement pagination
             paginator = PageNumberPagination()
-            paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
-            result_page = paginator.paginate_queryset(
-                serializer.data, request)
-
-            return paginator.get_paginated_response(result_page)
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+            paginator.page_size = 10
+            result_page = paginator.paginate_queryset(notifications, request)
+            serializer = NotificationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        except Exception:
+            logger.exception("Error fetching notifications")
+            return error_response('An unexpected error occurred.', status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
         try:
             notification_id = request.GET.get('id')
             notification = Notification.objects.get(id=notification_id)
-            return Response(notification.delete(), status=status.HTTP_200_OK)
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+            if notification.to_user != request.user:
+                return Response(status=status.HTTP_403_FORBIDDEN)
+            notification.delete()
+            return Response(status=status.HTTP_200_OK)
+        except Notification.DoesNotExist:
+            return error_response('Notification not found.', status.HTTP_404_NOT_FOUND)
+        except Exception:
+            logger.exception("Error deleting notification")
+            return error_response('An unexpected error occurred.', status.HTTP_500_INTERNAL_SERVER_ERROR)

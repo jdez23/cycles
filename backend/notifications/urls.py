@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import *
+
+from .views import FcmTokenView, NotificationView
 
 urlpatterns = [
-    path('fcmToken/', fcmTokenView.as_view()),
-    path('message/', NotificationView.as_view())
+    path('fcm-token/', FcmTokenView.as_view()),
+    path('message/', NotificationView.as_view()),
 ]
