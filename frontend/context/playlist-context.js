@@ -1,8 +1,5 @@
-import * as SecureStore from "expo-secure-store";
-import axios from "axios";
+import api from "../utils/api";
 import context from "./context";
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const defaultValue = {
   userProfileData: [],
@@ -21,6 +18,7 @@ const defaultValue = {
   isLiked: false,
   comments: [],
   spotifyPlaylists: [],
+  appleMusicPlaylists: [],
   errorMessage: "",
 };
 
@@ -35,11 +33,6 @@ const playlistReducer = (state, action) => {
       return {
         ...state,
         errorMessage: "",
-      };
-    case "spotifyAuth":
-      return {
-        ...state,
-        spotifyAuth: action.spotifyAuth,
       };
     case "userProfileData":
       return {
@@ -89,18 +82,16 @@ const playlistReducer = (state, action) => {
       if (action.append) {
         return {
           ...state,
+          has_uploaded: action.has_uploaded,
           allPlaylists: {
             ...state.allPlaylists,
-            ...state.has_uploaded,
             results: [
-              ...state.allPlaylists.results,
-              ...action.allPlaylists.results,
+              ...(state.allPlaylists?.results || []),
+              ...(action.allPlaylists?.results || []),
             ],
           },
-          has_uploaded: action.has_uploaded, // Update has_uploaded even in append mode
         };
       }
-      // Reset state when not appending
       return {
         ...state,
         allPlaylists: action.allPlaylists,
@@ -163,7 +154,10 @@ const playlistReducer = (state, action) => {
           ...state,
           comments: {
             ...action.comments,
-            results: [...state.comments, ...action.comments],
+            results: [
+              ...(state.comments?.results || []),
+              ...(action.comments?.results || []),
+            ],
           },
         };
       }
@@ -183,8 +177,8 @@ const playlistReducer = (state, action) => {
           spotifyPlaylists: {
             ...action.spotifyPlaylists,
             results: [
-              ...state.spotifyPlaylists.results,
-              ...action.spotifyPlaylists.results,
+              ...(state.spotifyPlaylists?.results || []),
+              ...(action.spotifyPlaylists?.results || []),
             ],
           },
         };
@@ -193,10 +187,32 @@ const playlistReducer = (state, action) => {
         ...state,
         spotifyPlaylists: action.spotifyPlaylists,
       };
+    case "appleMusicPlaylists":
+      if (action.append) {
+        return {
+          ...state,
+          appleMusicPlaylists: {
+            ...action.appleMusicPlaylists,
+            results: [
+              ...(state.appleMusicPlaylists?.results || []),
+              ...(action.appleMusicPlaylists?.results || []),
+            ],
+          },
+        };
+      }
+      return {
+        ...state,
+        appleMusicPlaylists: action.appleMusicPlaylists,
+      };
     case "selectedSpotifyPlaylist":
       return {
         ...state,
         selectedSpotifyPlaylist: action.selectedSpotifyPlaylist,
+      };
+    case "selectedAppleMusicPlaylist":
+      return {
+        ...state,
+        selectedAppleMusicPlaylist: action.selectedAppleMusicPlaylist,
       };
     case "isSelected":
       return {
@@ -235,62 +251,34 @@ const playlistReducer = (state, action) => {
       }
       return {
         ...state,
-        followers: action.followers, // Replace followers when not appending
+        followers: action.followers,
       };
+    default:
+      return state;
   }
 };
 
-//Fetch current users profile data
 const getMyProfileData = (dispatch) => async () => {
-  const token = await SecureStore.getItemAsync("token", {});
-  const userID = await SecureStore.getItemAsync("user_id", {});
   try {
-    await axios
-      .get(`${BACKEND_URL}/users/user/${userID}/`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      })
-      .then((res) => {
-        dispatch({
-          type: "myProfileData",
-          myProfileData: res.data,
-        });
-      });
+    const res = await api.get("/users/user/me/");
+    dispatch({ type: "myProfileData", myProfileData: res.data });
   } catch (error) {
-    // Extract error message from the response if available
-    let errorMessage = "Something wrong. Please try again.";
-    if (error.response && error.response.data) {
-      errorMessage = error.response.data.message || errorMessage;
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-
     dispatch({
       type: "error_1",
-      payload: errorMessage,
+      payload: "Something went wrong. Please try again.",
     });
   }
 };
 
-//Fetch my playlists
 const getMyPlaylistData =
   (dispatch) =>
   async (nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextPage ? nextPage : `${BACKEND_URL}/feed/my-playlists/`;
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = response.data;
+      const url = nextPage || "/feed/my-playlists/";
+      const res = await api.get(url);
       dispatch({
         type: "myPlaylistData",
-        myPlaylistData: data,
+        myPlaylistData: res.data,
         append: !!nextPage,
       });
     } catch (err) {
@@ -301,27 +289,18 @@ const getMyPlaylistData =
     }
   };
 
-// Fetch all playlists
 const getAllPlaylists =
   (dispatch) =>
   async (nextFeed = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextFeed ? nextFeed : `${BACKEND_URL}/feed/playlist/`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
+      const url = nextFeed || "/feed/playlist/";
+      const res = await api.get(url);
+      dispatch({
+        type: "allPlaylists",
+        allPlaylists: res.data?.playlists,
+        has_uploaded: res.data?.has_uploaded,
+        append: !!nextFeed,
       });
-      if (res.status === 200) {
-        dispatch({
-          type: "allPlaylists",
-          allPlaylists: res?.data?.playlists,
-          has_uploaded: res?.data?.has_uploaded,
-          append: !!nextFeed,
-        });
-      }
     } catch (error) {
       dispatch({
         type: "error_1",
@@ -330,33 +309,14 @@ const getAllPlaylists =
     }
   };
 
-// Get a users profile data
 const getProfileData = (dispatch) => async (profileID) => {
-  const userID = await SecureStore.getItemAsync("user_id", {});
-  const token = await SecureStore.getItemAsync("token", {});
   try {
-    const res = await axios.get(`${BACKEND_URL}/users/user/${profileID}/`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-      },
-    });
-    if (res.status == 200) {
-      const profile_Data = res.data;
-      dispatch({ type: "userProfileData", userProfileData: profile_Data });
-      const followers = profile_Data.followers;
-      const followersID = followers.map((item) => item.user);
-      const exists = followersID.some(
-        (id) => id.toString() === userID.toString()
-      );
-      if (exists) {
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      null;
-    }
+    const res = await api.get(`/users/user/${profileID}/`);
+    const profileData = res.data;
+    dispatch({ type: "userProfileData", userProfileData: profileData });
+    // Return whether the current user follows this profile
+    // The serializer includes a computed `is_following` field after the refactor
+    return profileData.is_following ?? false;
   } catch (error) {
     dispatch({
       type: "error_1",
@@ -365,25 +325,15 @@ const getProfileData = (dispatch) => async (profileID) => {
   }
 };
 
-//Fetch a users playlists
 const getPlaylistData =
   (dispatch) =>
   async (userID = null, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/feed/user-playlists/?id=${userID}`;
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = response.data;
+      const url = nextPage || `/feed/user-playlists/?id=${userID}`;
+      const res = await api.get(url);
       dispatch({
         type: "userPlaylistData",
-        userPlaylistData: data,
+        userPlaylistData: res.data,
         append: !!nextPage,
       });
     } catch (error) {
@@ -394,28 +344,17 @@ const getPlaylistData =
     }
   };
 
-//Fetch followers playlists
 const getFollowersPlaylists =
   (dispatch) =>
   async (nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/feed/following-playlists/`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
+      const url = nextPage || "/feed/following-playlists/";
+      const res = await api.get(url);
+      dispatch({
+        type: "followingPlaylists",
+        followingPlaylists: res.data,
+        append: !!nextPage,
       });
-      if (res.status === 200) {
-        dispatch({
-          type: "followingPlaylists",
-          followingPlaylists: res.data,
-          append: !!nextPage,
-        });
-      }
     } catch (err) {
       dispatch({
         type: "error_1",
@@ -424,94 +363,35 @@ const getFollowersPlaylists =
     }
   };
 
-// Fetch playlists by hashtag
 const getPlaylistByHashtag =
   (dispatch) =>
   async (hashtag, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/feed/playlists/hashtag/?hashtag=${encodeURIComponent(
-            hashtag
-          )}`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
+      const url =
+        nextPage ||
+        `/feed/playlists/hashtag/?hashtag=${encodeURIComponent(hashtag)}`;
+      const res = await api.get(url);
+      dispatch({
+        type: "hashtagPlaylists",
+        hashtagPlaylists: res.data,
+        append: !!nextPage,
       });
-      if (res.status === 200) {
-        dispatch({
-          type: "hashtagPlaylists",
-          hashtagPlaylists: res.data,
-          append: !!nextPage,
-        });
-      }
     } catch (err) {
       dispatch({
         type: "error_1",
-        payload: "Something went wrong. Please try again." + err,
+        payload: "Something went wrong. Please try again.",
       });
     }
   };
 
-// Post playlist
-const postPlaylist = (dispatch) => async (selected_playlist) => {
-  const formData = new FormData();
-  formData.append("playlist_url", selected_playlist.external_urls.spotify);
-  formData.append("playlist_ApiURL", selected_playlist.href);
-  formData.append("playlist_id", selected_playlist.id);
-  formData.append("playlist_cover", selected_playlist.images[0].url);
-  formData.append("playlist_title", selected_playlist.name);
-  formData.append("playlist_type", selected_playlist.type);
-  formData.append("playlist_uri", selected_playlist.uri);
-  formData.append("playlist_tracks", selected_playlist.tracks.href);
-  try {
-    const res = await axios.post(
-      `${BACKEND_URL}/feed/my-playlist/`,
-      {
-        body: formData,
-      },
-      {
-        headers: {
-          Authorization: token,
-          Accept: "application/json",
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    if (res.status === 201) {
-      return 201;
-    }
-  } catch (e) {
-    dispatch({
-      type: "error_1",
-      payload: "Something went wrong. Please try again.",
-    });
-  }
-};
-
-// Fetch playlist data
 const fetchPlaylist =
   (dispatch) =>
   async (id, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token");
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/feed/playlist-details/?id=${id}`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = res?.data;
-      dispatch({
-        type: "playlistDetails",
-        playlist: res.data?.playlist,
-      });
+      const url = nextPage || `/feed/playlist-details/?id=${id}`;
+      const res = await api.get(url);
+      const data = res.data;
+      dispatch({ type: "playlistDetails", playlist: data?.playlist });
       dispatch({
         type: "playlistTracks",
         tracks: data?.tracks,
@@ -532,15 +412,9 @@ const fetchPlaylist =
 const fetchMoreTracks =
   (dispatch) =>
   async (nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token");
     try {
-      const res = await axios.get(nextPage, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = res?.data;
+      const res = await api.get(nextPage);
+      const data = res.data;
       dispatch({
         type: "addTracks",
         tracks: data?.tracks,
@@ -558,19 +432,9 @@ const fetchMoreTracks =
     }
   };
 
-// Delete playlist
 const deletePlaylist = (dispatch) => async (id) => {
-  const token = await SecureStore.getItemAsync("token", {});
   try {
-    const res = await axios.delete(
-      `${BACKEND_URL}/feed/my-playlists/?id=${id}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
+    const res = await api.delete(`/feed/my-playlists/?id=${id}`);
     return res.status;
   } catch (err) {
     dispatch({
@@ -580,31 +444,18 @@ const deletePlaylist = (dispatch) => async (id) => {
   }
 };
 
-// Update Spotify Playlist
 const updatePlaylist = (dispatch) => async (playlist_id) => {
-  const token = await SecureStore.getItemAsync("token", {});
   try {
-    await axios
-      .put(
-        `${BACKEND_URL}/feed/playlist-details/?playlist_id=${playlist_id}`,
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        }
-      )
-      .then((res) => {
-        dispatch({
-          type: "playlistDetails",
-          playlist: res.data?.playlistDetails,
-        });
-        dispatch({
-          type: "playlistTracks",
-          tracks: res.data?.playlistTracks,
-        });
-      });
+    const res = await api.put(
+      `/feed/playlist-details/?playlist_id=${playlist_id}`,
+      {}
+    );
+    dispatch({ type: "playlistDetails", playlist: res.data?.playlistDetails });
+    dispatch({
+      type: "playlistTracks",
+      tracks: res.data?.playlistTracks,
+      pagination: { count: null, next: null, previous: null },
+    });
   } catch (err) {
     dispatch({
       type: "error_1",
@@ -613,24 +464,15 @@ const updatePlaylist = (dispatch) => async (playlist_id) => {
   }
 };
 
-// Get all comments for playlist
 const getComments =
   (dispatch) =>
   async (playlist_id, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url =
-        nextPage || `${BACKEND_URL}/feed/comments-playlist/?id=${playlist_id}`;
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const comments = response.data;
+      const url = nextPage || `/feed/comments-playlist/?id=${playlist_id}`;
+      const res = await api.get(url);
       dispatch({
         type: "comments",
-        comments: comments,
+        comments: res.data,
         append: !!nextPage,
       });
     } catch (err) {
@@ -641,243 +483,146 @@ const getComments =
     }
   };
 
-// Comment on playlist
-const comment = () => async (props) => {
-  const token = await SecureStore.getItemAsync("token", {});
-  const data = {
+const comment = (dispatch) => async (props) => {
+  const notifData = {
     to_user: props.to_user.toString(),
     title: "Cycles",
     image: props.playlist_cover,
   };
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/feed/comments-playlist/`,
-      {
-        id: props.playlist_id,
-        title: props.title,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
-    data["body"] = `commented: ${props.title}`;
-    data["playlist_id"] = props.playlist_id;
-    data["type"] = "comment";
-    data["comment"] = response.data.id;
-    data["follow"] = null;
-    data["like"] = null;
-    if (response.status === 201) {
-      // Send notification
-      try {
-        axios
-          .post(`${BACKEND_URL}/notifications/message/`, data, {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          })
-          .then((res) => {
-            return res.status;
-          });
-      } catch (error) {
-        console.error("Notification Error:", error.response?.data || error);
-      }
+    const res = await api.post("/feed/comments-playlist/", {
+      id: props.playlist_id,
+      title: props.title,
+    });
+    if (res.status === 201) {
+      notifData.body = `commented: ${props.title}`;
+      notifData.playlist_id = props.playlist_id;
+      notifData.type = "comment";
+      notifData.comment = res.data.id;
+      notifData.follow = null;
+      notifData.like = null;
+      // Best-effort notification — don't surface errors to the user
+      api.post("/notifications/message/", notifData).catch(() => {});
     }
   } catch (error) {
-    console.error("Comment Error:", error.response?.data || error);
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
   }
 };
 
 const deleteComment = (dispatch) => async (id) => {
-  const token = await SecureStore.getItemAsync("token", {});
   try {
-    await axios
-      .delete(`${BACKEND_URL}/feed/comments-playlist/?id=${id}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      })
-      .then((res) => {
-        return res.status;
-      });
+    const res = await api.delete(`/feed/comments-playlist/?id=${id}`);
+    return res.status;
   } catch (err) {
-    null;
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
   }
 };
 
 const checkIfLiked = (dispatch) => async (id) => {
-  const token = await SecureStore.getItemAsync("token", {});
   try {
-    const isLiked = await axios.get(`${BACKEND_URL}/feed/like-playlist/`, {
-      params: {
-        id: id,
-      },
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-      },
-    });
-    // return isLiked;
-    dispatch({
-      type: "isLiked",
-      isLiked: isLiked,
-    });
+    const res = await api.get("/feed/like-playlist/", { params: { id } });
+    dispatch({ type: "isLiked", isLiked: res.data });
   } catch (err) {
-    null;
+    // Silently ignore — like state will be shown as false
   }
 };
 
-// Like playlist
 const likePlaylist = (dispatch) => async (route) => {
-  const playlist_id = route.playlist_id;
-  const token = await SecureStore.getItemAsync("token", {});
-  const to_user = route.to_user;
-  const playlist_cover = route.images;
-  const data = {
+  const { playlist_id, to_user, images: playlist_cover } = route;
+  const notifData = {
     to_user: to_user.toString(),
     title: "Cycles",
     image: playlist_cover,
   };
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/feed/like-playlist/`,
-      {
-        id: playlist_id,
-        like: "True",
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
-    const isLiked = response.data.like;
-    data["like"] = response.data.id;
-    data["body"] = `liked your playlist.`;
-    data["playlist_id"] = playlist_id;
-    data["type"] = "like";
-    data["follow"] = null;
-    data["comment"] = null;
-    if (response.status === 201) {
-      try {
-        axios.post(`${BACKEND_URL}/notifications/message/`, data, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      } catch (error) {
-        null;
-      }
+    const res = await api.post("/feed/like-playlist/", {
+      id: playlist_id,
+      like: "True",
+    });
+    const isLiked = res.data.like;
+    if (res.status === 201) {
+      notifData.like = res.data.id;
+      notifData.body = "liked your playlist.";
+      notifData.playlist_id = playlist_id;
+      notifData.type = "like";
+      notifData.follow = null;
+      notifData.comment = null;
+      api.post("/notifications/message/", notifData).catch(() => {});
       return isLiked;
-    } else {
-      return false;
     }
-  } catch (err) {
-    null;
-  }
-};
-
-// Unlike playlist
-const unlikePlaylist = (dispatch) => async (id) => {
-  const userToken = await SecureStore.getItemAsync("token", {});
-  try {
-    await axios
-      .delete(`${BACKEND_URL}/feed/like-playlist/?id=${id}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: userToken,
-        },
-      })
-      .then((res) => {
-        value = res.data;
-        return value;
-      });
+    return false;
   } catch (err) {
     return false;
   }
 };
 
-// Follow user
+const unlikePlaylist = (dispatch) => async (id) => {
+  try {
+    const res = await api.delete(`/feed/like-playlist/?id=${id}`);
+    return res.data;
+  } catch (err) {
+    return false;
+  }
+};
+
 const followUser = (dispatch) => async (props) => {
-  const token = await SecureStore.getItemAsync("token", {});
-  const data = {
+  const notifData = {
     to_user: props.to_user,
     title: "Cycles",
     image: null,
   };
   try {
-    const response = await axios.post(
-      `${BACKEND_URL}/users/following/`,
-      { user: props.currentUser, following_user: props.to_user.toString() },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
-    data["follow"] = response.data.id;
-    data["body"] = `started following you.`;
-    data["type"] = "follow";
-    data["like"] = null;
-    data["comment"] = null;
-    if (response.status === 201) {
-      axios.post(`${BACKEND_URL}/notifications/message/`, data, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
+    const res = await api.post("/users/following/", {
+      user: props.currentUser,
+      following_user: props.to_user.toString(),
+    });
+    if (res.status === 201) {
+      notifData.follow = res.data.id;
+      notifData.body = "started following you.";
+      notifData.type = "follow";
+      notifData.like = null;
+      notifData.comment = null;
+      api.post("/notifications/message/", notifData).catch(() => {});
     }
   } catch (err) {
-    null;
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
   }
 };
 
-// Unfollow user
 const unfollowUser = (dispatch) => async (props) => {
-  const userToken = await SecureStore.getItemAsync("token", {});
   try {
-    await axios.delete(`${BACKEND_URL}/users/following/`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: userToken,
-      },
+    await api.delete("/users/following/", {
       params: {
         user: props.currentUser,
         following_user: props.to_user,
       },
     });
   } catch (err) {
-    null;
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
   }
 };
 
-//Fetch Spotify playlists from API
 const getSpotifyPlaylist =
   (dispatch) =>
   async (nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token", {});
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/spotify_api/spotify-playlist/`;
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = response.data;
+      const url = nextPage || "/spotify-api/spotify-playlist/";
+      const res = await api.get(url);
       dispatch({
         type: "spotifyPlaylists",
-        spotifyPlaylists: data,
+        spotifyPlaylists: res.data,
         append: !!nextPage,
       });
     } catch (err) {
@@ -888,43 +633,89 @@ const getSpotifyPlaylist =
     }
   };
 
-//Select playlist
-const selectPlaylist = (dispatch) => async (item) => {
-  dispatch({
-    type: "selectedSpotifyPlaylist",
-    selectedSpotifyPlaylist: item,
-  });
+const getAppleMusicPlaylists =
+  (dispatch) =>
+  async (nextPage = null) => {
+    try {
+      const url = nextPage || "/apple-music/playlists/";
+      const res = await api.get(url);
+      dispatch({
+        type: "appleMusicPlaylists",
+        appleMusicPlaylists: res.data,
+        append: !!nextPage,
+      });
+    } catch (err) {
+      dispatch({
+        type: "error_1",
+        payload: "Something went wrong. Please try again.",
+      });
+    }
+  };
+
+const isAppleMusicAuth = (dispatch) => async () => {
+  try {
+    const res = await api.get("/apple-music/token/");
+    return res.data;
+  } catch (e) {
+    return false;
+  }
+};
+
+const appleMusicLogin = (dispatch) => async (musicUserToken) => {
+  try {
+    const res = await api.post("/apple-music/login/", { music_user_token: musicUserToken });
+    return res.data.authenticated;
+  } catch (err) {
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
+    return false;
+  }
+};
+
+const appleMusicLogout = (dispatch) => async () => {
+  try {
+    await api.delete("/apple-music/logout/");
+  } catch (err) {
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
+  }
+};
+
+const selectPlaylist = (dispatch) => (item) => {
+  dispatch({ type: "selectedSpotifyPlaylist", selectedSpotifyPlaylist: item });
   dispatch({ type: "isSelected", isSelected: item.id });
 };
 
-const clearSelectedPlaylist = (dispatch) => async () => {
+const clearSelectedPlaylist = (dispatch) => () => {
   dispatch({ type: "selectedSpotifyPlaylist", selectedSpotifyPlaylist: null });
   dispatch({ type: "isSelected", isSelected: null });
 };
 
-// Get list of following
+const selectAppleMusicPlaylist = (dispatch) => (item) => {
+  dispatch({ type: "selectedAppleMusicPlaylist", selectedAppleMusicPlaylist: item });
+  dispatch({ type: "isSelected", isSelected: item.id });
+};
+
+const clearSelectedAppleMusicPlaylist = (dispatch) => () => {
+  dispatch({ type: "selectedAppleMusicPlaylist", selectedAppleMusicPlaylist: null });
+  dispatch({ type: "isSelected", isSelected: null });
+};
+
 const getFollowing =
   (dispatch) =>
   async (to_user, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token");
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/users/user-following/?user_id=${to_user}`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
+      const url = nextPage || `/users/user-following/?user_id=${to_user}`;
+      const res = await api.get(url);
+      dispatch({
+        type: "following",
+        following: res.data,
+        append: !!nextPage,
       });
-      if (res.status === 200) {
-        const data = res?.data;
-        dispatch({
-          type: "following",
-          following: data,
-          append: !!nextPage,
-        });
-      }
     } catch (error) {
       dispatch({
         type: "error_1",
@@ -933,29 +724,17 @@ const getFollowing =
     }
   };
 
-// Get list of followers
 const getFollowers =
   (dispatch) =>
   async (id, nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token");
     try {
-      const url = nextPage
-        ? nextPage
-        : `${BACKEND_URL}/users/user-followers/?user_id=${id}`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
+      const url = nextPage || `/users/user-followers/?user_id=${id}`;
+      const res = await api.get(url);
+      dispatch({
+        type: "followers",
+        followers: res.data,
+        append: !!nextPage,
       });
-
-      if (res.status === 200) {
-        dispatch({
-          type: "followers",
-          followers: res.data, // Pass the full data object
-          append: !!nextPage,
-        });
-      }
     } catch (error) {
       dispatch({
         type: "error_1",
@@ -974,7 +753,6 @@ export const { Provider, Context } = context(
     getPlaylistData,
     getFollowersPlaylists,
     getPlaylistByHashtag,
-    postPlaylist,
     fetchPlaylist,
     fetchMoreTracks,
     deletePlaylist,
@@ -988,12 +766,16 @@ export const { Provider, Context } = context(
     followUser,
     unfollowUser,
     getSpotifyPlaylist,
+    getAppleMusicPlaylists,
+    isAppleMusicAuth,
+    appleMusicLogin,
+    appleMusicLogout,
     selectPlaylist,
     clearSelectedPlaylist,
+    selectAppleMusicPlaylist,
+    clearSelectedAppleMusicPlaylist,
     getFollowers,
     getFollowing,
   },
-  {
-    defaultValue,
-  }
+  defaultValue
 );

@@ -47,6 +47,12 @@ const ScreensLayout = () => {
         }}
       />
       <Stack.Screen
+        name="apple-music-playlist"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="spotify-playlist"
         options={{
           headerShown: false,

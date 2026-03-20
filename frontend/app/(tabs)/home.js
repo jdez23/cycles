@@ -18,7 +18,6 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import ActionSheet from "react-native-actionsheet";
 import Header from "../../components/header";
 import Toast from "react-native-root-toast";
-import moment from "moment";
 import * as SecureStore from "expo-secure-store";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
@@ -27,11 +26,29 @@ import Spotify_Icon_RGB_Green from "../../assets/logos/Spotify_Icon_RGB_Green.pn
 
 const windowWidth = Dimensions.get("window").width;
 
+/** Returns a human-readable relative time string without moment.js */
+const timeAgo = (dateString) => {
+  const now = Date.now();
+  const then = new Date(dateString).getTime();
+  const seconds = Math.round((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.round(months / 12)}y ago`;
+};
+
 const FollowingFeed = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingData, setIsCheckingData] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Single ActionSheet rendered once outside the FlatList
   const actionSheet = useRef();
   const playlistContext = useContext(PlaylistContext);
   const playlists = playlistContext?.state?.followingPlaylists?.results;
@@ -75,36 +92,37 @@ const FollowingFeed = () => {
     const me = await SecureStore.getItemAsync("user_id");
     router.push({
       pathname: "/screens/playlist-screen",
-      params: { playlist_id: selectedItem?.id ?? item.id, me },
+      params: { playlist_id: item.id, me },
     });
     setSelectedItem(null);
   };
 
-  const onUserPic = async (item) => {
+  const onUserPic = (item) => {
     router.push({
       pathname: "screens/user-profile",
       params: {
-        userID: selectedItem?.user || item.user,
-        playlist_id: selectedItem?.id || item.id,
+        userID: item.user,
+        playlist_id: item.id,
       },
     });
     setSelectedItem(null);
   };
 
   const onActionSelect = (index) => {
+    if (!selectedItem) return;
     if (index === 0) {
       onUserPic(selectedItem);
     } else if (index === 1) {
       onPlaylistDetail(selectedItem);
-    } else if (index === 2) {
-      setSelectedItem(null); // Reset selectedItem when "Cancel" is selected
+    } else {
+      setSelectedItem(null);
     }
   };
 
-  // Open ActionSheet only when selectedItem is set
+  // Show ActionSheet whenever a new item is selected
   useEffect(() => {
     if (selectedItem) {
-      actionSheet.current.show();
+      actionSheet.current?.show();
     }
   }, [selectedItem]);
 
@@ -127,17 +145,9 @@ const FollowingFeed = () => {
         </View>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => {
-            setSelectedItem(item);
-          }}
+          onPress={() => setSelectedItem(item)}
         >
           <Ionicons name="ellipsis-horizontal" size={20} color="white" />
-          <ActionSheet
-            ref={actionSheet}
-            options={["Go to profile", "Go to playlist", "Cancel"]}
-            onPress={(index) => onActionSelect(index)}
-            cancelButtonIndex={2}
-          />
         </TouchableOpacity>
       </View>
       {item?.playlist_cover && (
@@ -145,12 +155,7 @@ const FollowingFeed = () => {
           onPress={() => onPlaylistDetail(item)}
           style={styles.playlistContainer}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Image
               style={styles.playlistCover}
               source={{ uri: item.playlist_cover }}
@@ -170,7 +175,7 @@ const FollowingFeed = () => {
           </Pressable>
         </Pressable>
       )}
-      <Text style={styles.timestamp}>{moment(item.date).fromNow()}</Text>
+      <Text style={styles.timestamp}>{timeAgo(item.date)}</Text>
     </View>
   );
 
@@ -185,6 +190,13 @@ const FollowingFeed = () => {
   return (
     <SafeAreaView style={styles.screen}>
       <Header />
+      {/* Single ActionSheet instance — not inside renderItem */}
+      <ActionSheet
+        ref={actionSheet}
+        options={["Go to profile", "Go to playlist", "Cancel"]}
+        onPress={onActionSelect}
+        cancelButtonIndex={2}
+      />
       {playlists?.length > 0 ? (
         <FlatList
           data={playlists}

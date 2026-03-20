@@ -5,98 +5,78 @@ import {
   Text,
   Image,
   Linking,
-  Dimensions,
   TextInput,
   SafeAreaView,
   TouchableOpacity,
   TouchableHighlight,
   ActivityIndicator,
 } from "react-native";
-import * as SecureStore from "expo-secure-store";
 import Icon from "react-native-vector-icons/FontAwesome";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { Context as AuthContext } from "../../context/auth-context";
 import { Context as PlaylistContext } from "../../context/playlist-context";
 import { router } from "expo-router";
 import Toast from "react-native-root-toast";
-import axios from "axios";
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
+import api from "../../utils/api";
 
 const CreatePlaylist = () => {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [source, setSource] = useState("spotify"); // "spotify" | "apple_music"
   const authContext = useContext(AuthContext);
   const playlistContext = useContext(PlaylistContext);
-  const selected_playlist = playlistContext?.state?.selectedSpotifyPlaylist;
+
+  const selected_spotify = playlistContext?.state?.selectedSpotifyPlaylist;
+  const selected_apple = playlistContext?.state?.selectedAppleMusicPlaylist;
+  const selected_playlist = source === "spotify" ? selected_spotify : selected_apple;
   const continueDisabled = !selected_playlist;
-  const getToken = async () => await SecureStore.getItemAsync("token");
+
   const [hashtag, setHashtag] = useState("");
   const [hashtags, setHashtags] = useState([]);
 
-  // Validate and add hashtag
   const addHashtag = () => {
-    const MAX_LENGTH = 30; // Define the maximum length for a hashtag
-
-    if (hashtag.trim()) {
-      // Normalize the hashtag
-      const formattedHashtag = hashtag
-        .trim()
-        .toLowerCase() // Optional: Convert to lowercase for consistency
-        .replace(/\s+/g, "_"); // Replace spaces with underscores
-
-      // Ensure the hashtag starts with "#"
-      const finalHashtag = formattedHashtag.startsWith("#")
-        ? formattedHashtag
-        : `#${formattedHashtag}`;
-
-      // Check if the hashtag exceeds the maximum length
-      if (finalHashtag.length > MAX_LENGTH) {
-        Toast.show(
-          `Hashtag too long! Max length is ${MAX_LENGTH} characters.`,
-          {
-            duration: Toast.durations.SHORT,
-            position: Toast.positions.CENTER,
-          }
-        );
-        return; // Exit the function if the hashtag is too long
-      }
-
-      // Check for duplicates
-      if (!hashtags.includes(finalHashtag)) {
-        setHashtags([...hashtags, finalHashtag]);
-        setHashtag(""); // Clear the input field
-      } else {
-        Toast.show("Hashtag already added!", {
-          duration: Toast.durations.SHORT,
-          position: Toast.positions.CENTER,
-        });
-      }
+    const MAX_LENGTH = 30;
+    if (!hashtag.trim()) return;
+    const formatted = hashtag.trim().toLowerCase().replace(/\s+/g, "_");
+    const finalHashtag = formatted.startsWith("#") ? formatted : `#${formatted}`;
+    if (finalHashtag.length > MAX_LENGTH) {
+      Toast.show(`Hashtag too long! Max length is ${MAX_LENGTH} characters.`, {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.CENTER,
+      });
+      return;
+    }
+    if (!hashtags.includes(finalHashtag)) {
+      setHashtags([...hashtags, finalHashtag]);
+      setHashtag("");
+    } else {
+      Toast.show("Hashtag already added!", {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.CENTER,
+      });
     }
   };
 
-  // Remove hashtag by index
   const removeHashtag = (index) => {
-    const updatedHashtags = [...hashtags];
-    updatedHashtags.splice(index, 1);
-    setHashtags(updatedHashtags);
+    const updated = [...hashtags];
+    updated.splice(index, 1);
+    setHashtags(updated);
   };
 
-  //Listen for Callback URL
+  // Listen for Spotify OAuth callback URL
   useEffect(() => {
     const callback = Linking.addEventListener("url", onSpotifyCallback);
     return () => callback.remove();
   }, [authContext?.state.token]);
 
-  // Listen for errors
+  // Show auth errors as toasts
   useEffect(() => {
     if (authContext?.state?.errorMessage) {
       setToast(
         Toast.show(authContext?.state?.errorMessage, {
           duration: Toast.durations.SHORT,
           position: Toast.positions.CENTER,
-          onHidden: () =>
-            authContext?.dispatch({ type: "clear_error_message" }),
+          onHidden: () => authContext?.setError(""),
         })
       );
     } else if (toast) {
@@ -104,179 +84,204 @@ const CreatePlaylist = () => {
     }
   }, [authContext?.state?.errorMessage]);
 
-  // Authenticate Spotify
   const authenticateSpotify = async () => {
-    const isSpotifyAuth = await authContext?.isSpotifyAuth();
-    isSpotifyAuth === "true" ? router.push("/screens/spotify-playlist") : null;
-    isSpotifyAuth === "false" ? authContext?.authSpotify() : null;
-  };
-
-  //Spotify Callback
-  const onSpotifyCallback = async (url) => {
-    if (url !== null) {
-      const urlCallback = new URL(url.url);
-      const code = urlCallback.searchParams.get("code");
-      const tokenresponse = await authContext?.spotifyCallback(code);
-      const data = {
-        access_token: tokenresponse.access_token,
-        token_type: tokenresponse.token_type,
-        expires_in: tokenresponse.expires_in,
-        refresh_token: tokenresponse.refresh_token,
-      };
-      const res = await authContext?.spotifyLogin(data);
-      if (res == "true") {
-        router.push("/screens/spotify-playlist");
-      } else {
-        null;
-      }
+    const isAuth = await authContext?.isSpotifyAuth();
+    if (isAuth === "true") {
+      router.push("/screens/spotify-playlist");
+    } else {
+      authContext?.authSpotify();
     }
   };
 
-  //Post playlist to API
+  const onSpotifyCallback = async (url) => {
+    if (!url) return;
+    const urlCallback = new URL(url.url);
+    const code = urlCallback.searchParams.get("code");
+    if (!code) return;
+    const tokenResponse = await authContext?.spotifyCallback(code);
+    if (!tokenResponse) return;
+    const res = await authContext?.spotifyLogin({
+      access_token: tokenResponse.access_token,
+      token_type: tokenResponse.token_type,
+      expires_in: tokenResponse.expires_in,
+      refresh_token: tokenResponse.refresh_token,
+    });
+    if (res === "true") {
+      router.push("/screens/spotify-playlist");
+    }
+  };
+
+  const authenticateAppleMusic = async () => {
+    router.push("/screens/apple-music-playlist");
+  };
+
+  const selectSource = (item) => {
+    if (source === "spotify") {
+      authenticateSpotify();
+    } else {
+      authenticateAppleMusic();
+    }
+  };
+
+  const getSelectedCoverUrl = () => {
+    if (!selected_playlist) return null;
+    if (source === "spotify") {
+      return selected_playlist.images?.[0]?.url;
+    }
+    const url = selected_playlist.attributes?.artwork?.url;
+    if (!url) return null;
+    return url.replace("{w}", "60").replace("{h}", "60");
+  };
+
+  const getSelectedTitle = () => {
+    if (!selected_playlist) return null;
+    return source === "spotify"
+      ? selected_playlist.name
+      : selected_playlist.attributes?.name;
+  };
+
   const postPlaylist = async () => {
     setLoading(true);
     try {
-      const token = await getToken();
+      let data;
+      if (source === "spotify") {
+        data = {
+          hashtags,
+          source: "spotify",
+          playlist_url: selected_playlist.external_urls.spotify,
+          playlist_ApiURL: selected_playlist.href,
+          playlist_id: selected_playlist.id,
+          playlist_cover: selected_playlist.images[0].url,
+          playlist_title: selected_playlist.name,
+          playlist_description: selected_playlist.description,
+          playlist_type: selected_playlist.type,
+          playlist_uri: selected_playlist.uri,
+          playlist_tracks: selected_playlist.tracks.href,
+        };
+      } else {
+        const artworkUrl = selected_playlist.attributes?.artwork?.url
+          ?.replace("{w}", "500")
+          .replace("{h}", "500");
+        data = {
+          hashtags,
+          source: "apple_music",
+          playlist_id: selected_playlist.id,
+          playlist_cover: artworkUrl || "",
+          playlist_title: selected_playlist.attributes?.name || "",
+          playlist_type: "playlist",
+        };
+      }
 
-      const data = {
-        hashtags, // Array of hashtags
-        playlist_url: selected_playlist.external_urls.spotify,
-        playlist_ApiURL: selected_playlist.href,
-        playlist_id: selected_playlist.id,
-        playlist_cover: selected_playlist.images[0].url,
-        playlist_title: selected_playlist.name,
-        playlist_description: selected_playlist.description,
-        playlist_type: selected_playlist.type,
-        playlist_uri: selected_playlist.uri,
-        playlist_tracks: selected_playlist.tracks.href,
-      };
-
-      const response = await axios.post(
-        `${BACKEND_URL}/feed/my-playlists/`,
-        data,
-        {
-          headers: {
-            Authorization: token,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        }
-      );
+      const response = await api.post("/feed/my-playlists/", data);
 
       if (response.status === 201) {
-        playlistContext?.clearSelectedPlaylist();
+        if (source === "spotify") {
+          playlistContext?.clearSelectedPlaylist();
+        } else {
+          playlistContext?.clearSelectedAppleMusicPlaylist();
+        }
         setHashtags([]);
         playlistContext?.getFollowersPlaylists();
         playlistContext?.getAllPlaylists();
         router.replace("(tabs)/home");
       } else {
-        // Handle unexpected status codes
-        authContext?.dispatch({
-          type: "error_1",
-          payload: "Failed to post playlist.",
-        });
+        authContext?.setError("Failed to post playlist.");
       }
     } catch (error) {
-      // Extract error message from the response if available
-      let errorMessage = "Hmmm... Something went wrong. Please try again";
-      if (error.response && error.response.data) {
-        errorMessage = error.response.data.message || errorMessage;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      authContext?.dispatch({
-        type: "error_1",
-        payload: errorMessage,
-      });
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Hmmm... Something went wrong. Please try again";
+      authContext?.setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  //Navigate back to previous screen
   const cancel = () => {
     playlistContext?.clearSelectedPlaylist();
+    playlistContext?.clearSelectedAppleMusicPlaylist();
     setHashtags([]);
   };
 
+  const coverUrl = getSelectedCoverUrl();
+  const selectedTitle = getSelectedTitle();
+
   return (
-    <SafeAreaView
-      style={StyleSheet.create({ backgroundColor: "#111111", flex: 1 })}
-    >
+    <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <TouchableOpacity
           disabled={continueDisabled}
-          style={{
-            height: 50,
-            width: 80,
-            justifyContent: "center",
-          }}
-          onPress={() => cancel()}
+          style={styles.headerButton}
+          onPress={cancel}
         >
-          <Text
-            style={
-              continueDisabled
-                ? styles.disabled_cancel_text
-                : styles.cancel_text
-            }
-          >
+          <Text style={continueDisabled ? styles.disabled_cancel_text : styles.cancel_text}>
             Clear
           </Text>
         </TouchableOpacity>
         <Text style={styles.header_text}>Upload Playlist</Text>
         <TouchableOpacity
           disabled={continueDisabled}
-          style={{
-            height: 50,
-            width: 80,
-            justifyContent: "center",
-            alignItems: "flex-end",
-          }}
-          onPress={() => postPlaylist()}
+          style={[styles.headerButton, { alignItems: "flex-end" }]}
+          onPress={postPlaylist}
         >
-          <Text
-            style={
-              continueDisabled ? styles.disabled_share_text : styles.share_text
-            }
-          >
+          <Text style={continueDisabled ? styles.disabled_share_text : styles.share_text}>
             Share
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Source picker */}
+      <View style={styles.sourcePicker}>
+        <TouchableOpacity
+          style={[styles.sourceButton, source === "spotify" && styles.sourceButtonActive]}
+          onPress={() => setSource("spotify")}
+        >
+          <Text style={[styles.sourceButtonText, source === "spotify" && styles.sourceButtonTextActive]}>
+            Spotify
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sourceButton, source === "apple_music" && styles.sourceButtonActive]}
+          onPress={() => setSource("apple_music")}
+        >
+          <Text style={[styles.sourceButtonText, source === "apple_music" && styles.sourceButtonTextActive]}>
+            Apple Music
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {!selected_playlist ? (
-        <TouchableHighlight onPress={() => authenticateSpotify()}>
+        <TouchableHighlight onPress={selectSource}>
           <View style={styles.uploadplaylist}>
             <Text style={styles.uploadplaylist_text}>Select playlist</Text>
             <Ionicons name="chevron-forward" size={18} color={"lightgrey"} />
           </View>
         </TouchableHighlight>
       ) : (
-        <TouchableHighlight onPress={() => authenticateSpotify()}>
+        <TouchableHighlight onPress={selectSource}>
           <View style={styles.selected_playlist}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Image
-                source={selected_playlist?.images}
-                style={styles.playlistimage}
-              />
+              {coverUrl ? (
+                <Image source={{ uri: coverUrl }} style={styles.playlistimage} />
+              ) : (
+                <View style={[styles.playlistimage, { backgroundColor: "#333" }]} />
+              )}
               <View style={{ flexDirection: "column", marginLeft: 10 }}>
                 <Text style={styles.playlisttitle} numberOfLines={1}>
-                  {selected_playlist?.name}
+                  {selectedTitle}
                 </Text>
                 <Text style={styles.playlisttype} numberOfLines={1}>
-                  {selected_playlist?.type}
+                  {source === "spotify" ? "spotify" : "apple music"}
                 </Text>
               </View>
             </View>
-            <Icon
-              name="angle-right"
-              size={20}
-              style={{ right: 3, color: "white" }}
-            />
+            <Icon name="angle-right" size={20} style={{ right: 3, color: "white" }} />
           </View>
         </TouchableHighlight>
       )}
-      {/* Display existing hashtags */}
+
+      {/* Hashtag chips */}
       <View style={styles.chipContainer}>
         {hashtags.map((tag, index) => (
           <View key={index} style={styles.chip}>
@@ -287,42 +292,34 @@ const CreatePlaylist = () => {
           </View>
         ))}
       </View>
-      {/* Input for new hashtags */}
+
       <TextInput
         style={styles.input}
         value={hashtag}
         onChangeText={setHashtag}
-        onSubmitEditing={addHashtag} // Add hashtag on Enter/Done
+        onSubmitEditing={addHashtag}
         placeholder="Add a hashtag"
         placeholderTextColor="lightgrey"
         selectionColor="white"
       />
-      {/* Add button */}
       <TouchableOpacity style={styles.addButton} onPress={addHashtag}>
         <Text style={styles.addButtonText}>Add</Text>
       </TouchableOpacity>
-      {loading == true ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            backgroundColor: "rgba(12, 12, 12, 0.5)",
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            alignItems: "center",
-          }}
-        >
+
+      {loading && (
+        <View style={styles.loadingOverlay}>
           <ActivityIndicator size="small" />
         </View>
-      ) : null}
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: "#111111",
+    flex: 1,
+  },
   share_text: {
     fontSize: 14,
     fontWeight: "600",
@@ -359,17 +356,34 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  camera_container: {
+  headerButton: {
+    height: 50,
+    width: 80,
     justifyContent: "center",
-    height: 30,
-    width: 30,
-    backgroundColor: "black",
-    alignItems: "center",
-    flexDirection: "row",
-    borderRadius: 15,
   },
-  camera_icon: {
+  sourcePicker: {
+    flexDirection: "row",
+    marginHorizontal: 12,
+    marginBottom: 8,
+    gap: 8,
+  },
+  sourceButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
     alignItems: "center",
+    backgroundColor: "#1E1E1E",
+  },
+  sourceButtonActive: {
+    backgroundColor: "#0C8ECE",
+  },
+  sourceButtonText: {
+    color: "lightgrey",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  sourceButtonTextActive: {
+    color: "white",
   },
   uploadplaylist: {
     flexDirection: "row",
@@ -403,17 +417,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "lightgrey",
     left: 6,
-  },
-  cropIcon: {
-    height: 30,
-    width: 30,
-    borderRadius: 30,
-    backgroundColor: "rgba(52, 52, 52, 0.8)",
-    position: "absolute",
-    right: 15,
-    bottom: 15,
-    justifyContent: "center",
-    alignItems: "center",
   },
   chipContainer: {
     flexDirection: "row",
@@ -462,6 +465,17 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(12, 12, 12, 0.5)",
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
   },
 });
 
