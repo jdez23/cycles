@@ -19,15 +19,15 @@ import Toast from "react-native-root-toast";
 
 const window = Dimensions.get("window").width;
 
-const SpotifyPlaylist = () => {
+const AppleMusicPlaylist = () => {
   const authContext = useContext(AuthContext);
   const [loading, setLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [toast, setToast] = React.useState(null);
   const playlistContext = useContext(PlaylistContext);
-  const selected_playlist = playlistContext?.state?.selectedSpotifyPlaylist;
-  const nextPage = playlistContext?.state?.spotifyPlaylists?.next;
-  const spotifyPlaylists = playlistContext?.state?.spotifyPlaylists?.results;
+  const selected_playlist = playlistContext?.state?.selectedAppleMusicPlaylist;
+  const nextPage = playlistContext?.state?.appleMusicPlaylists?.next;
+  const applePlaylists = playlistContext?.state?.appleMusicPlaylists?.results;
 
   useEffect(() => {
     if (playlistContext?.state?.errorMessage) {
@@ -44,34 +44,38 @@ const SpotifyPlaylist = () => {
     }
   }, [playlistContext?.state?.errorMessage]);
 
-  //Call fetch Spotify playlists function
   useEffect(() => {
-    setTimeout(() => {
+    const load = async () => {
+      await playlistContext?.getAppleMusicPlaylists();
       setIsLoading(false);
-    }, 1200);
-    playlistContext?.getSpotifyPlaylist();
-  }, [authContext?.state?.token]);
+    };
+    load();
+  }, []);
 
-  //Navigate back to previous screen
   const onBack = () => {
-    playlistContext?.clearSelectedPlaylist();
-    // router.push("(tabs)/new_playlist");
+    playlistContext?.clearSelectedAppleMusicPlaylist();
     router.back();
   };
 
-  //Navigate back to previous screen
   const onSave = () => {
     router.push("(tabs)/new_playlist");
   };
 
-  const renderSpotifyPlaylist = ({ item }) => (
+  const getArtworkUrl = (item) => {
+    const url = item?.attributes?.artwork?.url;
+    if (!url) return null;
+    // Apple Music artwork URLs have {w}x{h} placeholders
+    return url.replace("{w}", "200").replace("{h}", "200");
+  };
+
+  const renderItem = ({ item }) => (
     <Pressable
       style={{ paddingTop: 12 }}
-      onPress={() => playlistContext?.selectPlaylist(item)}
+      onPress={() => playlistContext?.selectAppleMusicPlaylist(item)}
     >
       <View
         style={
-          playlistContext?.state?.isSelected == item.id
+          playlistContext?.state?.isSelected === item.id
             ? styles.card_selected
             : styles.card_not_selected
         }
@@ -84,14 +88,16 @@ const SpotifyPlaylist = () => {
               backgroundColor: "black",
             }}
           >
-            <Image
-              style={{
-                width: window / 2 - 30,
-                height: window / 2 - 30,
-                position: "absolute",
-              }}
-              source={{ uri: item.images?.[0]?.url }}
-            />
+            {getArtworkUrl(item) && (
+              <Image
+                style={{
+                  width: window / 2 - 30,
+                  height: window / 2 - 30,
+                  position: "absolute",
+                }}
+                source={{ uri: getArtworkUrl(item) }}
+              />
+            )}
           </View>
           <View
             style={{
@@ -111,7 +117,7 @@ const SpotifyPlaylist = () => {
               }}
               numberOfLines={1}
             >
-              {item.name}
+              {item?.attributes?.name}
             </Text>
             <Text
               style={{
@@ -121,7 +127,7 @@ const SpotifyPlaylist = () => {
                 fontSize: 12,
               }}
             >
-              {item.type}
+              playlist
             </Text>
           </View>
         </View>
@@ -132,7 +138,7 @@ const SpotifyPlaylist = () => {
   const loadMorePlaylists = async () => {
     if (nextPage && !loading) {
       setLoading(true);
-      await playlistContext?.getSpotifyPlaylist(nextPage);
+      await playlistContext?.getAppleMusicPlaylists(nextPage);
       setLoading(false);
     }
   };
@@ -162,7 +168,7 @@ const SpotifyPlaylist = () => {
             <Ionicons name="chevron-back" size={20} color={"white"} />
           </View>
         </TouchableOpacity>
-        <Text style={styles.header_text}>Spotify Playlists</Text>
+        <Text style={styles.header_text}>Apple Music Playlists</Text>
         <View style={styles.icon_box}>
           <TouchableOpacity onPress={onSave}>
             <Text
@@ -178,18 +184,13 @@ const SpotifyPlaylist = () => {
           </TouchableOpacity>
         </View>
       </View>
-      {!spotifyPlaylists ? null : (
-        <View
-          style={{
-            alignItems: "center",
-            flex: 1,
-          }}
-        >
+      {!applePlaylists ? null : (
+        <View style={{ alignItems: "center", flex: 1 }}>
           <FlatList
-            data={spotifyPlaylists}
+            data={applePlaylists}
             initialNumToRender={10}
             extraData={selected_playlist}
-            renderItem={renderSpotifyPlaylist}
+            renderItem={renderItem}
             keyExtractor={(item) => item.id}
             numColumns={2}
             onEndReached={loadMorePlaylists}
@@ -254,4 +255,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SpotifyPlaylist;
+export default AppleMusicPlaylist;

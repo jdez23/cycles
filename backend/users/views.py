@@ -1,220 +1,186 @@
-from .serializers import *
-from .models import *
-
-from rest_framework import viewsets, permissions, generics, status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.exceptions import ValidationError
-from django.http import JsonResponse
 import logging
+
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.responses import error_response
+from .models import Follow, Subscription, User
+from .serializers import (
+    FollowerSerializer,
+    FollowingSerializer,
+    FollowSerializer,
+    SubscriptionSerializer,
+    UserLoginSerializer,
+    UserRegisterSerializer,
+    UserSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class CustomAuthToken(ObtainAuthToken):
-
-    def post(self, request, *args, **kwargs):
-        try:
-            serializer = self.serializer_class(data=request.data,
-                                               context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            user = serializer.validated_data['user']
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user_id': user.pk,
-            })
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
-
-
 class CreateUser(APIView):
-    queryset = User.objects.all()
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        fb_id = request.data.get('token')
-        username = request.data.get('username')
+        fb_id = request.data.get("token")
+        username = request.data.get("username")
+
+        if not fb_id or not username:
+            return error_response("token and username are required.")
+
+        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")
+        if any(c not in allowed for c in username):
+            return error_response("Invalid characters in username.")
+
+        if User.objects.filter(username=username).exists():
+            return error_response("Username is already taken.")
 
         try:
-            # Validate username for invalid characters
-            allowed_characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
-            if any(char not in allowed_characters for char in username):
-                return Response({'error': 'Invalid characters in username.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Check if username already exists in the user database
-            if User.objects.filter(username=username).exists():
-                return Response({'error': 'Username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Create and save the new user
-            user = User.objects.create(
-                firebase_id=fb_id, username=username)
-            user.save()
-
-            serializer = UserRegisterSerializer(user)
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except ValidationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            # Log the exception for debugging purposes
-            print(f"Error: {e}")
-            return Response({'error': 'An unexpected error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            user = User.objects.create(firebase_id=fb_id, username=username)
+            return Response(UserRegisterSerializer(user).data, status=status.HTTP_201_CREATED)
+        except Exception:
+            logger.exception("Error creating user")
+            return error_response("An unexpected error occurred.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class Login(APIView):
-    queryset = User.objects.all()
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        fb_id = self.request.GET.get('token')
+        fb_id = request.GET.get("token")
         try:
             user = User.objects.get(firebase_id=fb_id)
-            if user:
-                serializer = UserLoginSerializer(user)
-                return Response({'data': serializer.data})
-            else:
-                return Response(status=404)
+            return Response({"data": UserLoginSerializer(user).data})
         except User.DoesNotExist:
-            return Response({'data': 'None'})
-        except:
-            return Response(status=500)
+            return Response({"data": "None"})
+        except Exception:
+            logger.exception("Error during login lookup")
+            return error_response("An unexpected error occurred.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    permission_class = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
     def update(self, request, *args, **kwargs):
+        user = request.user
         try:
-            user = self.request.user.id
-            avi_pic = request.FILES.get('avi_pic')
-
-            _user = User.objects.get(id=user)
-            _user.name = request.data.get('name', _user.name)
-            _user.username = request.data.get('username', _user.username)
-            _user.bio = request.data.get('bio', _user.bio)
-            _user.spotify_url = request.data.get(
-                'spotify_url', _user.spotify_url or None)
-
-            # Only update the avi_pic if a new one is uploaded
+            user.name = request.data.get("name", user.name)
+            user.username = request.data.get("username", user.username)
+            user.bio = request.data.get("bio", user.bio)
+            user.spotify_url = request.data.get("spotify_url", user.spotify_url) or None
+            avi_pic = request.FILES.get("avi_pic")
             if avi_pic:
-                # Assign the new file to the model's avi_pic field
-                _user.avi_pic = avi_pic
-
-            # Save the user details (including avi_pic if uploaded)
-            _user.save(update_fields=['avi_pic', 'name',
-                       'username', 'bio', 'spotify_url'])
-
+                user.avi_pic = avi_pic
+            user.save(update_fields=["avi_pic", "name", "username", "bio", "spotify_url"])
             return Response({"detail": "Profile updated successfully"}, status=status.HTTP_200_OK)
+        except Exception:
+            logger.exception("Error updating profile for user %s", user.id)
+            return error_response("An error occurred while updating the profile.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        except Exception as e:
-            logger.exception("Error updating profile: %s", e)
-            return Response({"error": "An error occurred while updating the profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def destroy(self, request, pk):
+    def destroy(self, request, pk=None):
+        if str(request.user.pk) != str(pk):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         try:
             User.objects.get(pk=pk).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return error_response("User not found.", status.HTTP_404_NOT_FOUND)
 
-        except Exception as e:
-            logger.exception("-------", e)
 
-
-# Follow or Unfollow user
 class FollowingView(APIView):
-    permission_class = [permissions.IsAuthenticated]
-    queryset = Follow.objects.all()
-    serializer_class = FollowSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        user = request.data.get('user')
-        following_user = request.data.get('following_user')
-        user = User.objects.get(id=user)
-        following_user = User.objects.get(id=following_user)
-
+        user_id = request.data.get("user")
+        following_id = request.data.get("following_user")
         try:
-            follow = Follow.objects.create(
-                user=user, following_user=following_user)
-            follow.save()
-
-            serializer = FollowSerializer(follow)
-
-            def __str__(self):
-                return f"{self.request.username} follows {self.following_user_id.username}"
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            user = User.objects.get(id=user_id)
+            following_user = User.objects.get(id=following_id)
+            follow, created = Follow.objects.get_or_create(user=user, following_user=following_user)
+            return Response(FollowSerializer(follow).data, status=status.HTTP_201_CREATED)
+        except User.DoesNotExist:
+            return error_response("User not found.", status.HTTP_404_NOT_FOUND)
+        except Exception:
+            logger.exception("Error following user")
+            return error_response("An unexpected error occurred.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
-        user = request.GET.get('user')
-        following_user = request.GET.get('following_user')
+        user_id = request.GET.get("user")
+        following_id = request.GET.get("following_user")
         try:
-            followers = Follow.objects.filter(following_user=following_user)
-            user = followers.get(user=user).delete()
+            Follow.objects.filter(user=user_id, following_user=following_id).delete()
             return Response(status=status.HTTP_200_OK)
-        except:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error unfollowing user")
+            return error_response("An unexpected error occurred.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Get the users following
 class UsersFollowing(generics.ListAPIView):
-    permission_class = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = FollowingSerializer
 
     def get_queryset(self):
-        try:
-            user = self.request.GET.get('user_id')
-            obj = Follow.objects.filter(user=user)
-            if obj:
-                return obj
-            return []
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+        user_id = self.request.GET.get("user_id")
+        return Follow.objects.filter(user_id=user_id).select_related("following_user")
 
 
-# Get the users followers
 class UsersFollowers(generics.ListAPIView):
-    permission_class = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = FollowerSerializer
 
     def get_queryset(self):
-        try:
-            user = self.request.GET.get('user_id')
-            obj = Follow.objects.filter(following_user=user)
-            if obj:
-                return obj
-            return []
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+        user_id = self.request.GET.get("user_id")
+        return Follow.objects.filter(following_user_id=user_id).select_related("user")
 
 
-# POST & DELETE Subscription
 class SubscriptionView(APIView):
-    queryset = Subscription.objects.all()
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
+        email = request.data.get("email", "").strip()
+        if not email:
+            return error_response("Email is required.")
+        Subscription.objects.get_or_create(email=email)
+        return Response({"message": "Thank you!"}, status=status.HTTP_201_CREATED)
 
-        save_email = Subscription.objects.create(email=email)
-        save_email.save()
-
-        if request.method == 'OPTIONS':
-            response = JsonResponse({'message': 'Preflight request received'})
-        else:
-            response = JsonResponse({'message': 'Thank you!'})
-
-        response['Access-Control-Allow-Methods'] = 'POST'
-        response['Access-Control-Allow-Headers'] = 'Content-Type'
-
-        return Response(response)
-
-    def delete(request):
-        email = request.data.get('email')
-
+    def delete(self, request):
+        email = request.data.get("email", "").strip()
         Subscription.objects.filter(email=email).delete()
-
         return Response(status=status.HTTP_200_OK)
+
+
+class ContactView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from .serializers import ContactMessageSerializer
+        from django.core.mail import EmailMessage
+
+        serializer = ContactMessageSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        name = serializer.validated_data["name"]
+        email = serializer.validated_data["email"]
+        message = serializer.validated_data["message"]
+
+        try:
+            EmailMessage(
+                subject=f"New Contact Form Message from {name}",
+                body=f"From: {name} <{email}>\n\n{message}",
+                from_email="noreply@cyclesstudios.com",
+                to=["cycles@cyclesstudios.com"],
+                reply_to=[email],
+            ).send()
+            return Response({"message": "Message sent successfully!"}, status=status.HTTP_200_OK)
+        except Exception:
+            logger.exception("Error sending contact email")
+            return error_response("Failed to send message. Try again later.", status.HTTP_500_INTERNAL_SERVER_ERROR)

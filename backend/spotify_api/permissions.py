@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission
 
-from .util import is_spotify_authenticated
+from .utils import is_spotify_authenticated
 
 
 class HasSpotifyToken(BasePermission):

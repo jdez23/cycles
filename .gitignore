@@ -3,3 +3,14 @@ backend/firebase-config.json
 frontend/.env
 frontend/google-services.json
 frontend/GoogleService-Info.plist
+backend/.env
+backend/media/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+*.egg-info/
+dist/
+build/
+.pytest_cache/

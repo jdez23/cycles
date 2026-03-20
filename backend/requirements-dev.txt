@@ -1,0 +1,6 @@
+autopep8
+pytest-django
+factory-boy
+pytest-mock
+responses
+freezegun

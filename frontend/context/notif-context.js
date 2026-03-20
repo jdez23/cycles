@@ -1,13 +1,10 @@
-// import PushNotificationIOS from "@react-native-community/push-notification-ios";
+import * as Notifications from "expo-notifications";
+import api from "../utils/api";
 import context from "./context";
-import axios from "axios";
-import * as SecureStore from "expo-secure-store";
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const defaultValue = {
   errorMessage: "",
-  notifCount: [0],
+  notifCount: 0,
   notifications: [],
 };
 
@@ -36,7 +33,7 @@ const notifReducer = (state, action) => {
             ...action.notifications,
             results: [
               ...(state.notifications?.results || []),
-              ...action.notifications.results,
+              ...(action.notifications?.results || []),
             ],
           },
         };
@@ -50,45 +47,34 @@ const notifReducer = (state, action) => {
   }
 };
 
-const resetCount = (dispatch) => () => {
+const resetCount = (dispatch) => async () => {
   try {
+    await Notifications.setBadgeCountAsync(0);
     dispatch({ type: "NOTIF_COUNT", notifCount: 0 });
-    PushNotificationIOS.setApplicationIconBadgeNumber(0);
   } catch (err) {
-    null;
+    // Ignore — badge updates are best-effort
   }
 };
 
-const notifBadge = (dispatch) => () => {
+const notifBadge = (dispatch) => async (currentCount) => {
   try {
-    const badge_num = PushNotificationIOS.getApplicationIconBadgeNumber();
-    PushNotificationIOS.setApplicationIconBadgeNumber(+1);
-    dispatch({ type: "NOTIF_COUNT", notifCount: +1 });
+    const newCount = (currentCount || 0) + 1;
+    await Notifications.setBadgeCountAsync(newCount);
+    dispatch({ type: "NOTIF_COUNT", notifCount: newCount });
   } catch (err) {
-    null;
+    // Ignore
   }
 };
 
-//Fetch current users notifications.
 const getNotifications =
   (dispatch) =>
   async (nextPage = null) => {
-    const token = await SecureStore.getItemAsync("token");
     try {
-      const url = nextPage || `${BACKEND_URL}/notifications/message/`;
-      const res = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-
-      const notifications = res.data;
-
-      // Dispatch action to handle notifications
+      const url = nextPage || "/notifications/message/";
+      const res = await api.get(url);
       dispatch({
         type: "NOTIFICATIONS",
-        notifications: notifications,
+        notifications: res.data,
         append: !!nextPage,
       });
     } catch (err) {
@@ -100,20 +86,14 @@ const getNotifications =
   };
 
 const deleteNotification = (dispatch) => async (id) => {
-  const token = await SecureStore.getItemAsync("token");
   try {
-    const res = await axios.delete(
-      `${BACKEND_URL}/notifications/message/?id=${id}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
+    const res = await api.delete(`/notifications/message/?id=${id}`);
     return res.status;
   } catch (error) {
-    null;
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
   }
 };
 

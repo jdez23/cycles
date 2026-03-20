@@ -1,24 +1,10 @@
 import { Linking } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import axios from "axios";
 import { firebase } from "@react-native-firebase/auth";
+import api from "../utils/api";
 import context from "./context";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
-
-// Get Token/User from storage
-const getToken = async () => {
-  try {
-    const token = await SecureStore.getItemAsync("token");
-    if (token) {
-      return token;
-    } else {
-      return null;
-    }
-  } catch (e) {
-    return null;
-  }
-};
 
 const defaultValue = {
   user: "false",
@@ -51,6 +37,7 @@ const authReducer = (state, action) => {
       };
     case "confirmation":
       return {
+        ...state,
         errorMessage: "",
         confirmation: action.payload,
       };
@@ -81,10 +68,6 @@ const authReducer = (state, action) => {
         ...state,
         spotifyAuth: action.payload,
       };
-    case "notifications":
-      return {
-        notifications: action.payload,
-      };
     case "currentUser":
       return {
         ...state,
@@ -99,59 +82,58 @@ const tryLocalStorage = (dispatch) => async () => {
   const token = await SecureStore.getItemAsync("token");
   const username = await SecureStore.getItemAsync("username");
   const user = await SecureStore.getItemAsync("user");
-  if ((token, username, user)) {
+  const user_id = await SecureStore.getItemAsync("user_id");
+  if (token && username && user) {
     dispatch({
       type: "signin",
-      token: token,
-      username: username,
-      user: user,
+      token,
+      username,
+      user,
+      user_id: user_id || "",
     });
   }
 };
 
 const getCurrentUser = (dispatch) => async () => {
-  const user = await SecureStore.getItemAsync("user_id");
-  if (user) {
-    dispatch({
-      type: "currentUser",
-      user_id: user,
-    });
-    return user;
+  const user_id = await SecureStore.getItemAsync("user_id");
+  if (user_id) {
+    dispatch({ type: "currentUser", user_id });
+    return user_id;
   }
 };
 
-const completeSignUp = (dispatch) => async (token, user_name) => {
+const setError = (dispatch) => (message) => {
+  dispatch({ type: "error_1", payload: message });
+};
+
+const completeSignUp = (dispatch) => async (uid, username) => {
   try {
-    const res = await axios.post(
-      `${BACKEND_URL}/users/register/`,
-      {
-        token: token,
-        username: user_name.toLowerCase(),
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      }
-    );
+    const res = await api.post("/users/register/", {
+      token: uid,
+      username: username.toLowerCase(),
+    });
     if (res.status === 201) {
       const response = res.data;
-      SecureStore.setItemAsync("username", response?.username);
-      SecureStore.setItemAsync("user_id", JSON.stringify(response?.id));
-      SecureStore.setItemAsync("token", response?.firebase_id);
-      SecureStore.setItemAsync("user", "true");
+      // Get the real Firebase ID token (JWT) for authenticated API calls
+      const idToken = await firebase.auth().currentUser?.getIdToken();
+      const storedToken = idToken || response.firebase_id;
+      await Promise.all([
+        SecureStore.setItemAsync("username", response.username),
+        SecureStore.setItemAsync("user_id", JSON.stringify(response.id)),
+        SecureStore.setItemAsync("token", storedToken),
+        SecureStore.setItemAsync("user", "true"),
+      ]);
       dispatch({
         type: "signin",
-        token: response?.firebase_id,
-        user_id: JSON.stringify(response?.id),
-        username: response?.username,
+        token: storedToken,
+        user_id: JSON.stringify(response.id),
+        username: response.username,
         user: "true",
       });
       return true;
     }
   } catch (error) {
-    if (error.response.status === 400) {
+    if (error.response?.status === 400) {
       dispatch({
         type: "username_error",
         username_error: "Username is already taken.",
@@ -165,30 +147,30 @@ const completeSignUp = (dispatch) => async (token, user_name) => {
   }
 };
 
-const login = (dispatch) => async (token) => {
+// uid: Firebase UID for user lookup; idToken: Firebase ID token JWT for auth
+const login = (dispatch) => async (uid, idToken) => {
   try {
-    const res = await axios.get(`${BACKEND_URL}/users/login`, {
-      params: {
-        token: token,
-      },
-    });
+    const res = await api.get("/users/login/", { params: { token: uid } });
     const data = res.data.data;
-    if (data == "None") {
+    if (data === "None") {
       dispatch({
         type: "signin",
         user: "false",
-        token: token,
+        token: idToken,
         user_id: "",
         username: "",
       });
     } else {
-      SecureStore.setItemAsync("token", data.firebase_id);
-      SecureStore.setItemAsync("user_id", data.id.toString());
-      SecureStore.setItemAsync("username", data.username);
-      SecureStore.setItemAsync("user", "true");
+      // Always store the real ID token, not the firebase_id (UID)
+      await Promise.all([
+        SecureStore.setItemAsync("token", idToken),
+        SecureStore.setItemAsync("user_id", data.id.toString()),
+        SecureStore.setItemAsync("username", data.username),
+        SecureStore.setItemAsync("user", "true"),
+      ]);
       dispatch({
         type: "signin",
-        token: data.firebase_id,
+        token: idToken,
         user_id: data.id.toString(),
         username: data.username,
         user: "true",
@@ -205,11 +187,11 @@ const login = (dispatch) => async (token) => {
 const signInWithPhone = (dispatch) => async (data) => {
   try {
     const confirm = await firebase.auth().signInWithPhoneNumber(data);
-    await dispatch({ type: "confirmation", payload: confirm });
+    dispatch({ type: "confirmation", payload: confirm });
   } catch (err) {
     dispatch({
       type: "error_1",
-      payload: "Something went wrong. Please try again." + err,
+      payload: "Something went wrong. Please try again.",
     });
   }
 };
@@ -217,8 +199,10 @@ const signInWithPhone = (dispatch) => async (data) => {
 const confirmNumber = (dispatch) => async (confirm, code) => {
   try {
     const res = await confirm.confirm(code);
-    const token = res.user.uid;
-    login(dispatch)(token);
+    // Get the real Firebase ID token JWT — NOT just the UID
+    const idToken = await res.user.getIdToken();
+    const uid = res.user.uid;
+    login(dispatch)(uid, idToken);
   } catch (err) {
     dispatch({
       type: "error_1",
@@ -229,31 +213,50 @@ const confirmNumber = (dispatch) => async (confirm, code) => {
 };
 
 const signout = (dispatch) => async () => {
-  const token = await getToken();
+  // Clear local state regardless of network outcome
+  await Promise.all([
+    SecureStore.deleteItemAsync("user_id"),
+    SecureStore.deleteItemAsync("username"),
+    SecureStore.deleteItemAsync("user"),
+    SecureStore.deleteItemAsync("fcmToken"),
+    SecureStore.deleteItemAsync("token"),
+  ]);
+  dispatch({
+    type: "signout",
+    user_id: null,
+    username: null,
+    user: "false",
+    token: null,
+  });
+  dispatch({ type: "confirmation", payload: "" });
+
+  // Best-effort FCM token cleanup — don't block logout on this
   try {
-    const res = await axios.delete(`${BACKEND_URL}/notifications/fcmToken/`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-      },
-    });
-    if (res.status === 200) {
-      SecureStore.deleteItemAsync("user_id");
-      SecureStore.deleteItemAsync("username");
-      SecureStore.deleteItemAsync("user");
-      SecureStore.deleteItemAsync("fcmToken");
-      SecureStore.deleteItemAsync("token");
+    await api.delete("/notifications/fcm-token/");
+  } catch (_err) {
+    // Ignore — token will expire naturally
+  }
+};
+
+const deleteAccount = (dispatch) => async (user_id) => {
+  try {
+    const res = await api.delete(`/users/user/${user_id}/`);
+    if (res.status === 204) {
+      await Promise.all([
+        SecureStore.deleteItemAsync("token"),
+        SecureStore.deleteItemAsync("user_id"),
+        SecureStore.deleteItemAsync("username"),
+        SecureStore.deleteItemAsync("user"),
+        SecureStore.deleteItemAsync("fcmToken"),
+      ]);
       dispatch({
         type: "signout",
+        token: null,
         user_id: null,
         username: null,
         user: "false",
-        token: null,
       });
-      dispatch({
-        type: "confirmation",
-        payload: "",
-      });
+      dispatch({ type: "confirmation", payload: "" });
     }
   } catch (err) {
     dispatch({
@@ -263,75 +266,21 @@ const signout = (dispatch) => async () => {
   }
 };
 
-const deleteAccount = (dispatch) => async (user_id) => {
-  const token = await getToken();
-  try {
-    await axios
-      .delete(`${BACKEND_URL}/users/user/${user_id}/`, {
-        headers: {
-          Authorization: token,
-        },
-      })
-      .then((res) => {
-        if (res.status === 204) {
-          SecureStore.deleteItemAsync("token");
-          SecureStore.deleteItemAsync("user_id");
-          SecureStore.deleteItemAsync("username");
-          SecureStore.deleteItemAsync("user");
-          SecureStore.deleteItemAsync("fcmToken");
-          dispatch({
-            type: "signout",
-            token: null,
-            user_id: null,
-            username: null,
-            user: "false",
-          });
-          dispatch({
-            type: "confirmation",
-            payload: "",
-          });
-        }
-      });
-  } catch (err) {
-    dispatch({
-      type: "error_1",
-      payload: "Something went wrong. Please try again.",
-    });
-  }
-};
-
-// Check if Spotify is authenticated
 const isSpotifyAuth = (dispatch) => async () => {
-  const token = await SecureStore.getItemAsync("token");
   try {
-    const isAuth = await axios.get(`${BACKEND_URL}/spotify_api/token/`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-      },
-    });
-    dispatch({ type: "spotifyAuth", payload: JSON.stringify(isAuth.data) });
-    return JSON.stringify(isAuth.data);
+    const res = await api.get("/spotify-api/token/");
+    const value = JSON.stringify(res.data);
+    dispatch({ type: "spotifyAuth", payload: value });
+    return value;
   } catch (e) {
-    null;
+    return null;
   }
 };
 
-// Authenticate Spotify
 const authSpotify = (dispatch) => async () => {
-  const userToken = await SecureStore.getItemAsync("token");
   try {
-    axios
-      .get(`${BACKEND_URL}/spotify_api/get-auth-url/`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: userToken,
-        },
-      })
-      .then((res) => {
-        let url = JSON.stringify(res.data);
-        Linking.openURL(JSON.parse(url));
-      });
+    const res = await api.get("/spotify-api/get-auth-url/");
+    Linking.openURL(res.data);
   } catch (err) {
     dispatch({
       type: "error_1",
@@ -340,20 +289,10 @@ const authSpotify = (dispatch) => async () => {
   }
 };
 
-//Spotify Callback
 const spotifyCallback = (dispatch) => async (code) => {
-  const token = await SecureStore.getItemAsync("token");
   try {
-    const tokenresponse = await axios.post(
-      `${BACKEND_URL}/spotify_api/token-request/`,
-      { code: code },
-      {
-        headers: {
-          Authorization: token,
-        },
-      }
-    );
-    return tokenresponse.data;
+    const res = await api.post("/spotify-api/token-request/", { code });
+    return res.data;
   } catch (e) {
     dispatch({
       type: "error_1",
@@ -363,18 +302,8 @@ const spotifyCallback = (dispatch) => async (code) => {
 };
 
 const spotifyLogin = (dispatch) => async (data) => {
-  const userToken = await SecureStore.getItemAsync("token");
   try {
-    const res = await axios.post(
-      `${BACKEND_URL}/spotify_api/spotify_login/`,
-      data,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: userToken,
-        },
-      }
-    );
+    const res = await api.post("/spotify-api/spotify-login/", data);
     dispatch({ type: "spotifyAuth", payload: res.data });
     return res.data;
   } catch (err) {
@@ -386,19 +315,9 @@ const spotifyLogin = (dispatch) => async (data) => {
 };
 
 const spotifyLogout = (dispatch) => async () => {
-  // const userToken = await RNSInfo.getItem('token', {});
-  const userToken = await SecureStore.getItemAsync("token");
   try {
-    await axios
-      .delete(`${BACKEND_URL}/spotify_api/spotify_logout/`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: userToken,
-        },
-      })
-      .then((res) => {
-        dispatch({ type: "spotifyAuth", payload: res.data });
-      });
+    const res = await api.delete("/spotify-api/spotify-logout/");
+    dispatch({ type: "spotifyAuth", payload: res.data });
   } catch (err) {
     dispatch({
       type: "error_1",
@@ -407,14 +326,26 @@ const spotifyLogout = (dispatch) => async () => {
   }
 };
 
+const getDeveloperToken = (dispatch) => async () => {
+  try {
+    const res = await api.get("/apple-music/developer-token/");
+    return res.data.developer_token;
+  } catch (err) {
+    dispatch({
+      type: "error_1",
+      payload: "Something went wrong. Please try again.",
+    });
+    return null;
+  }
+};
+
 export const { Provider, Context } = context(
   authReducer,
   {
     tryLocalStorage,
     getCurrentUser,
+    setError,
     completeSignUp,
-    // onAppleButtonPress,
-    // onGoogleButtonPress,
     signInWithPhone,
     confirmNumber,
     signout,
@@ -424,7 +355,7 @@ export const { Provider, Context } = context(
     spotifyLogout,
     authSpotify,
     deleteAccount,
+    getDeveloperToken,
   },
   defaultValue
 );
-console;

@@ -1,6 +1,17 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import *
+
+from .views import (
+    CommentView,
+    FollowingPlaylists,
+    LikesViewSet,
+    MyPlaylists,
+    PlaylistDetails,
+    PlaylistViewSet,
+    PlaylistsByHashtagView,
+    SearchView,
+    UserPlaylists,
+)
 
 router = DefaultRouter()
 router.register('playlist', PlaylistViewSet, basename='playlist_view')
@@ -14,9 +25,5 @@ urlpatterns = [
     path('like-playlist/', LikesViewSet.as_view()),
     path('comments-playlist/', CommentView.as_view()),
     path('search/', SearchView.as_view(), name='search'),
-    path('get-description/', GetDescription.as_view(), name='get-description'),
-    path('playlists/hashtag/',
-         PlaylistsByHashtagView.as_view(), name='playlists-by-hashtag'),
-    #     path('generate-playlists/',
-    #          GeneratePlaylistView.as_view(), name='generate-playlists'),
+    path('playlists/hashtag/', PlaylistsByHashtagView.as_view(), name='playlists-by-hashtag'),
 ]

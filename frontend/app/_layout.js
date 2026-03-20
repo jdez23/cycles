@@ -47,9 +47,12 @@ const MainLayout = () => {
       }
     );
 
-    // Gets notif when phone/app is off
+    // Gets notif when phone/app is off (opened by tapping a notification)
     const getInitialNotification = async () => {
-      await messaging().getInitialNotification();
+      const remoteMessage = await messaging().getInitialNotification();
+      if (remoteMessage) {
+        router.replace("/notifs");
+      }
     };
     getInitialNotification();
 

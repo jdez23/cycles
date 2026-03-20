@@ -10,9 +10,18 @@ from users.models import User
 
 
 class Playlist(models.Model):
+    SOURCE_SPOTIFY = 'spotify'
+    SOURCE_APPLE = 'apple_music'
+    SOURCE_CHOICES = [
+        (SOURCE_SPOTIFY, 'Spotify'),
+        (SOURCE_APPLE, 'Apple Music'),
+    ]
+
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, default=None
     )
+    source = models.CharField(
+        max_length=20, choices=SOURCE_CHOICES, default=SOURCE_SPOTIFY)
     hashtags = TaggableManager(blank=True)
     playlist_url = models.CharField(max_length=300, default='', blank=True)
     playlist_ApiURL = models.CharField(
@@ -49,9 +58,12 @@ class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)
     playlist = models.ForeignKey(
-        Playlist, on_delete=models.CASCADE, default=False, blank=False)
+        Playlist, on_delete=models.CASCADE, blank=False)
     like = models.BooleanField(default=False)
     date = models.DateTimeField(editable=False, auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'playlist')
 
     def __str__(self):
         return f"User={self.user.username}||Liked || Playlist={self.playlist}"

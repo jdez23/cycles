@@ -1,195 +1,153 @@
-from .credentials import *
-from .util import *
 import logging
+import os
 
-from requests import Request, post
+import requests
+from requests import Request
 
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 
 from feed.models import Playlist
+from .models import SpotifyToken
+from .utils import (
+    CLIENT_ID,
+    CLIENT_SECRET,
+    REDIRECT_URL,
+    execute_spotify_request,
+    get_user_tokens,
+    is_spotify_authenticated,
+    update_or_create_user_tokens,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class SpotifyAuthURL(APIView):
-
     def get(self, request):
-        try:
-            scopes = 'playlist-read-private user-read-private playlist-modify-public playlist-modify-private user-library-modify'
-            url = Request('GET', 'https://accounts.spotify.com/authorize',
-                          params={
-                              'scope': scopes,
-                              'response_type': 'code',
-                              'redirect_uri': REDIRECT_URL,
-                              'client_id': CLIENT_ID
-                          }
-                          ).prepare().url
-            return Response(url, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
+        scopes = (
+            "playlist-read-private user-read-private "
+            "playlist-modify-public playlist-modify-private user-library-modify"
+        )
+        url = Request(
+            "GET",
+            "https://accounts.spotify.com/authorize",
+            params={
+                "scope": scopes,
+                "response_type": "code",
+                "redirect_uri": REDIRECT_URL,
+                "client_id": CLIENT_ID,
+            },
+        ).prepare().url
+        return Response(url, status=status.HTTP_200_OK)
 
 
 class SpotifyCallback(APIView):
-
     def post(self, request):
-        try:
-            code = request.data.get('code')
+        code = request.data.get("code")
+        if not code:
+            return Response({"error": "Code not found in request"}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not code:
-                return Response({'Error': 'Code not found in request'}, status=status.HTTP_400_BAD_REQUEST)
-
-            response = post('https://accounts.spotify.com/api/token', data={
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': REDIRECT_URL,
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET
-            }).json()
-
-            if not response:
-                return Response({'error': 'Spotify request failed!'}, status=response.status_code)
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
+        raw = requests.post(
+            "https://accounts.spotify.com/api/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": REDIRECT_URL,
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+            },
+        )
+        if not raw.ok:
+            return Response({"error": "Spotify token exchange failed."}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(raw.json(), status=status.HTTP_200_OK)
 
 
 class LoginSpotify(APIView):
     def post(self, request):
-        try:
-            access_token = request.data.get('access_token')
-            refresh_token = request.data.get('refresh_token')
-            expires_in = request.data.get('expires_in')
-            token_type = request.data.get('token_type')
+        access_token = request.data.get("access_token")
+        refresh_token = request.data.get("refresh_token")
+        expires_in = request.data.get("expires_in")
+        token_type = request.data.get("token_type")
 
-            user = self.request.user
+        if not all([access_token, refresh_token, expires_in, token_type]):
+            return Response({"error": "Missing token fields."}, status=status.HTTP_400_BAD_REQUEST)
 
-            update_or_create_user_tokens(
-                user, access_token, refresh_token, expires_in, token_type)
-
-            return Response('true', status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
-
-    def get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        return serializer_class(*args, **kwargs)
+        update_or_create_user_tokens(
+            request.user, access_token, refresh_token, expires_in, token_type
+        )
+        return Response({"authenticated": True}, status=status.HTTP_200_OK)
 
 
 class IsSpotifyAuthenticated(APIView):
-    def get(self, request, format=None):
-        try:
-            user = self.request.user
-            is_authenticated = is_spotify_authenticated(user)
-            return Response(is_authenticated, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
+    def get(self, request):
+        return Response(is_spotify_authenticated(request.user), status=status.HTTP_200_OK)
 
 
 class SpotifyLogout(APIView):
     def delete(self, request):
-        try:
-            user = self.request.user
-            tokens = SpotifyToken.objects.filter(user=user)
-            tokens.delete()
-            return Response('false', status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
+        SpotifyToken.objects.filter(user=request.user).delete()
+        return Response({"authenticated": False}, status=status.HTTP_200_OK)
 
 
-# get users playlists from spotify
 class SpotifyPlaylist(APIView):
-    def get(self, request, format=None):
-        try:
-            user = self.request.user
-            id_endpoint = 'v1/me'
-            spotify_username = execute_spotify_api_request(user, id_endpoint)
-            me = spotify_username['id']
-            selected_playlists = Playlist.objects.filter(user=user)
-            selected_playlist_ids = [
-                playlist.playlist_id for playlist in selected_playlists]
+    """Returns user's Spotify playlists that have not yet been shared on Cycles."""
 
-            endpoint = "v1/me/playlists"
-            params = {'limit': 50, 'offset': 0}
-            playlists = []
+    def get(self, request):
+        user = request.user
 
-            # Fetch all playlists from Spotify
-            while True:
-                response = execute_spotify_playlist_request(
-                    user, endpoint, params)
-                if not response or 'items' not in response:
-                    logger.error(
-                        f"Spotify API returned an invalid response: {response}")
-                    break
+        me_data = execute_spotify_request(user, "v1/me")
+        if "error" in me_data:
+            return Response({"error": "Failed to fetch Spotify profile."}, status=status.HTTP_502_BAD_GATEWAY)
+        spotify_user_id = me_data["id"]
 
-                playlists.extend(response['items'])
+        already_shared_ids = set(
+            Playlist.objects.filter(user=user, source=Playlist.SOURCE_SPOTIFY)
+            .values_list("playlist_id", flat=True)
+        )
 
-                # Stop if there are no more pages
-                if len(response['items']) < params['limit']:
-                    break
+        params = {"limit": 50, "offset": 0}
+        all_playlists = []
+        while True:
+            data = execute_spotify_request(user, "v1/me/playlists", params=params)
+            if not data or "items" not in data:
+                logger.error("Invalid Spotify playlists response: %s", data)
+                break
+            all_playlists.extend(data["items"])
+            if len(data["items"]) < params["limit"]:
+                break
+            params["offset"] += params["limit"]
 
-                # Increment the offset
-                params['offset'] += params['limit']
+        unshared = [
+            p for p in all_playlists
+            if p.get("owner", {}).get("id") == spotify_user_id
+            and p.get("public") is True
+            and p["id"] not in already_shared_ids
+        ]
 
-            # Filter playlists
-            my_playlists = [
-                i for i in playlists if i['owner']['id'] == me]
-            public_playlists = [i for i in my_playlists if i['public'] == True]
-            unselected_playlists = [
-                playlist for playlist in public_playlists if playlist['id'] not in selected_playlist_ids]
-
-            # Implement pagination
-            paginator = PageNumberPagination()
-            paginator.page_size = 10  # Set the page size, can be adjusted or configured in settings
-            result_page = paginator.paginate_queryset(
-                unselected_playlists, request)
-
-            return paginator.get_paginated_response(result_page)
-        except Exception as e:
-            logger.exception("-------", e)
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        page = paginator.paginate_queryset(unshared, request)
+        return paginator.get_paginated_response(page)
 
 
-# get tracks in users spotify playlist
 class SpotifyPlaylistTracks(APIView):
-    def get(self, request, format=None):
-        try:
-            user = self.request.user
-            spotify_playlist_id = request.GET.get('playlist_id')
-
-            endpoint = 'v1/playlists/'+spotify_playlist_id+"/tracks"
-            response = execute_spotify_api_request(user, endpoint)
-
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("-------", e)
+    def get(self, request):
+        playlist_id = request.GET.get("playlist_id")
+        if not playlist_id:
+            return Response({"error": "playlist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        data = execute_spotify_request(request.user, f"v1/playlists/{playlist_id}/tracks")
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class AddSongToLikedPlaylist(APIView):
     def put(self, request):
-        try:
-            user = self.request.user
-            track_id = request.data.get('track_id')
-            endpoint = f"v1/me/tracks?ids={track_id}"
-
-            execute_add_track_request(user, endpoint)
-
-            return Response({"message": "Added!"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception("Error adding track to liked playlist")
-            return Response({"error": "Something went wrong."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class SpotifySearch(APIView):
-    def search(self, token):
-        try:
-            endpoint = "v1/search"
-            access_token = self.get_access_token()
-            headers = {
-                "Authorization": f"Bearer {access_token}"
-            }
-            return Response(status=status.HTTP_200_OK)
-        except:
-            return Response({'error': 'An unexpected error occurred.'}, status=500)
+        track_id = request.data.get("track_id")
+        if not track_id:
+            return Response({"error": "track_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        execute_spotify_request(
+            request.user, f"v1/me/tracks", method="PUT", body={"ids": [track_id]}
+        )
+        return Response({"message": "Added!"}, status=status.HTTP_200_OK)
