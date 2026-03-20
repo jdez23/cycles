@@ -1,15 +1,17 @@
 # Cycles
 
-Social playlist-sharing app. Users connect Spotify and Apple Music accounts, share playlists, follow other users, like and comment on playlists.
+Social playlist-sharing app. Users connect Spotify or Apple Music, share playlists, follow other users, and like/comment on playlists.
 
-## Tech Stack
+---
 
-- **Backend**: Django 5.1 + Django REST Framework, PostgreSQL, AWS S3, Firebase Auth
-- **Push Notifications**: Firebase Cloud Messaging (FCM HTTP v1)
-- **Music Integrations**: Spotify Web API, Apple Music API (MusicKit)
-- **Hosting**: Heroku (backend), S3 (media/static)
+## Backend
 
-## Prerequisites
+**Stack:** Django 5.1 + Django REST Framework, PostgreSQL, AWS S3, Firebase Auth
+**Push notifications:** Firebase Cloud Messaging (FCM HTTP v1)
+**Music:** Spotify Web API, Apple Music API (MusicKit)
+**Hosting:** Heroku (backend), S3 (media/static)
+
+### Prerequisites
 
 - Python 3.12
 - PostgreSQL
@@ -17,11 +19,10 @@ Social playlist-sharing app. Users connect Spotify and Apple Music accounts, sha
 - Spotify Developer App credentials
 - Apple Developer account with MusicKit enabled
 
-## Local Setup
+### Local Setup
 
 ```bash
-git clone <repo>
-cd cycles/backend
+cd backend
 python -m venv env && source env/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env   # fill in values
@@ -29,7 +30,7 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-## Environment Variables
+### Backend Environment Variables
 
 | Variable | Description |
 |---|---|
@@ -47,7 +48,7 @@ python manage.py runserver
 | `SPOTIFY_REDIRECT_URL` | Spotify OAuth redirect URI |
 | `APPLE_MUSIC_KEY_ID` | Apple MusicKit key ID |
 | `APPLE_MUSIC_TEAM_ID` | Apple Developer team ID |
-| `APPLE_MUSIC_PRIVATE_KEY` | Apple MusicKit .p8 private key contents |
+| `APPLE_MUSIC_PRIVATE_KEY` | Apple MusicKit `.p8` private key contents |
 | `APPLE_MUSIC_STOREFRONT` | Apple Music storefront (default: `us`) |
 | `AWS_ACCESS_KEY_ID` | S3 access key |
 | `AWS_SECRET_ACCESS_KEY` | S3 secret key |
@@ -58,7 +59,7 @@ python manage.py runserver
 | `EMAIL_HOST_USER` | SMTP username |
 | `EMAIL_HOST_PASSWORD` | SMTP password |
 
-## API Endpoints
+### API Endpoints
 
 | Prefix | App | Description |
 |---|---|---|
@@ -69,13 +70,81 @@ python manage.py runserver
 | `/notifications/` | notifications | FCM tokens, push notifications |
 | `/health/` | — | Health check |
 
-## Running Tests
+### Running Tests
 
 ```bash
 cd backend
 pytest
 ```
 
-## Deployment
+### Deployment
 
 Deployed to Heroku. Push to main triggers deploy. `collectstatic` runs via Procfile release phase.
+
+---
+
+## Frontend
+
+**Stack:** React Native 0.74 / Expo 51, Expo Router 3.5 (file-based navigation)
+**Auth & notifications:** Firebase (phone auth via OTP, FCM push notifications)
+**State:** React Context + `useReducer` (AuthContext, PlaylistContext, NotifContext)
+**HTTP:** centralized axios client (`utils/api.js`) with automatic token refresh
+**Music:** Spotify Web API (OAuth), Apple Music (MusicKit JS, client-side)
+
+### Prerequisites
+
+- Node.js 18+
+- Expo CLI: `npm install -g expo-cli`
+- iOS: Xcode + iOS Simulator (Mac only)
+- Android: Android Studio + Android Emulator
+- A running backend (see above), or point `EXPO_PUBLIC_API_URL` at staging
+
+### Local Setup
+
+```bash
+cd frontend
+npm install
+# create .env.local with EXPO_PUBLIC_API_URL=http://localhost:8000
+npx expo start
+```
+
+Scan the QR code with Expo Go, or press `i`/`a` for simulator.
+
+### Frontend Environment Variables
+
+| Variable | Description |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | Backend base URL (e.g. `http://localhost:8000`) |
+
+### Project Structure
+
+```
+frontend/
+├── app/
+│   ├── (auth)/          Sign-in (phone), OTP confirmation
+│   ├── (tabs)/          Home feed, Discover, Create playlist, Notifications, Profile
+│   ├── onboard/         Username creation (new users)
+│   └── screens/         Playlist detail, user profile, comments, music pickers
+├── context/             AuthContext, PlaylistContext, NotifContext
+├── utils/
+│   ├── api.js           Centralized axios instance (always use this)
+│   └── token.js         getValidToken() with auto-refresh
+├── components/          Reusable UI components
+├── firebase/            FCM token registration
+└── assets/              Images and logos
+```
+
+### Running on Device
+
+```bash
+npx expo start --tunnel   # tunnel needed if device isn't on the same network
+```
+
+Scan QR code with the Expo Go app.
+
+### Production Builds (EAS)
+
+```bash
+eas build --platform ios
+eas build --platform android
+```
